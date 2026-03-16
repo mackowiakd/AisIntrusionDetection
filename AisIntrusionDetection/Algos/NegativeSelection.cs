@@ -36,25 +36,32 @@ namespace AisIntrusionDetection.Models
                 Detector candidate = new Detector(candidateCoordinates, radius);
 
                 // KROK 2 ze schematu: Match (porównanie z Self set)
+                //bool isMatch = false;
+                //foreach (var selfPacket in selfSet)
+                //{
+                //    if (candidate.IsMatch(selfPacket))
+                //    {
+                //        isMatch = true;
+                //        break; // Zahaczył o zdrowy ruch! Przerywamy sprawdzanie.
+                //    }
+                //}
+
+                // UŻYWASZ Parallel.ForEach, które automatycznie rozrzuci pakiety na Twoje 12 rdzeni logicznych!
                 bool isMatch = false;
-                foreach (var selfPacket in selfSet)
+
+                Parallel.ForEach(selfSet, (selfPacket, state) =>
                 {
                     if (candidate.IsMatch(selfPacket))
                     {
                         isMatch = true;
-                        break; // Zahaczył o zdrowy ruch! Przerywamy sprawdzanie.
+                        state.Break(); // To przerywa pętle na wszystkich rdzeniach, jeśli choć jeden znalazł wirusa (oszczędność czasu!)
                     }
-                }
+                });
 
-                // KROK 3 ze schematu: Reject / Add to Detector set (M)
-                if (isMatch)
+                // Zapis lub odrzucenie
+                if (!isMatch)
                 {
-                    // MATCH == YES -> REJECT (Nic nie robimy, kandydat jest ignorowany)
-                }
-                else
-                {
-                    // MATCH == NO -> Detektor przetrwał! Dodajemy go do armii.
-                    matureDetectors.Add(candidate);
+                    matureDetectors.Add(candidate); // MATCH == NO -> Detektor przeżywa
                 }
             }
 
