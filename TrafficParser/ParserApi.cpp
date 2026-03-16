@@ -1,16 +1,39 @@
 //funkcje na zewn¹trz (dla C#)
 
+
+
 #include "ParserApi.h"
+#include "DataNormalizer.h"
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
 
-// Funkcja eksportowana dla C#
-extern "C" __declspec(dllexport) void ProcessNetworkRecord(const char* rawRecord, float* outputVector, int vectorSize)
+extern "C" __declspec(dllexport) int LoadAndParseDataset(const char* filePath, float* outputArray, int maxRows, int featuresCount)
 {
-    // Tutaj w przysz³oœci bêdzie logika ciêcia stringa z CSV
-    // Na razie wrzuæmy przyk³adowe dane do tablicy (udajemy, ¿e znormalizowaliœmy pakiet)
-
-    if (vectorSize >= 3) {
-        outputVector[0] = 0.5f; // Udajemy znormalizowany czas trwania
-        outputVector[1] = 1.0f; // Udajemy TCP
-        outputVector[2] = 0.0f; // Udajemy brak flag b³êdu
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        return -1; // B³¹d otwarcia pliku
     }
+
+    std::string line;
+    int currentRow = 0;
+
+    // TODO: G³ówna pêtla wczytuj¹ca plik
+    while (std::getline(file, line) && currentRow < maxRows) {
+
+        // Wskazówka: U¿yj std::stringstream(line) i std::getline z u¿yciem przecinka ',' 
+        // jako delimitera, ¿eby poci¹æ liniê na poszczególne kolumny.
+
+        // Przyk³ad zapisu do p³askiej tablicy (któr¹ C# widzi jako wielowymiarow¹):
+        // outputArray[currentRow * featuresCount + 0] = DataNormalizer::ScaleMinMax(...);
+        // outputArray[currentRow * featuresCount + 1] = DataNormalizer::EncodeProtocol(...);
+
+        currentRow++;
+    }
+
+    file.close();
+
+    // Zwracamy C# informacjê, ile faktycznie wierszy (Antygenów) uda³o nam siê wczytaæ
+    return currentRow;
 }
