@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AisIntrusionDetection.Algorithms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -26,5 +27,13 @@ namespace AisIntrusionDetection.Interop
         // CallingConvention.Cdecl jest standardem dla C++
         [DllImport(CppPath, CallingConvention = CallingConvention.Cdecl)]
         public static extern void ProcessNetworkRecord(string rawRecord, float[] outputVector, int vectorSize);
+
+        [DllImport("TrafficParserCpp.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        public static extern int LoadAndParseDataset(
+          string filePath,
+          [Out] float[] outputArray, // [Out] podpowiada kompilatorowi, że C++ będzie tu wpisywać dane
+          int maxRows,
+          int featuresCount);
+
     }
 }

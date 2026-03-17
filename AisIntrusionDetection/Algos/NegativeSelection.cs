@@ -12,21 +12,19 @@ namespace AisIntrusionDetection.Models
     {
         private Random _random = new Random();
 
-        // Funkcja trenująca - wypluwa listę Dojrzałych Detektorów
-        public List<Detector> GenerateDetectors(List<float[]> selfSet, int numberOfFeatures, int requiredDetectors, float radius)
+        /*musi przyjmowac liste obiekto typu anitigen  */
+
+        // ZMIANA: Z List<Antigen[]> na List<Antigen>
+        public List<Detector> GenerateDetectors(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float radius)
         {
             List<Detector> matureDetectors = new List<Detector>();
-            int attempts = 0; // Licznik prób, żeby sprawdzić jak bardzo algorytm się męczy
+            int attempts = 0;
 
             Console.WriteLine($"[NSA] Rozpoczynam generowanie {requiredDetectors} detektorów...");
 
-            // Pętla kręci się, aż nie wyhodujemy wymaganej liczby detektorów
             while (matureDetectors.Count < requiredDetectors)
             {
                 attempts++;
-
-                // KROK 1 ze schematu: Generate candidates (C)
-                // Losujemy kandydata w przestrzeni znormalizowanej (od 0.0 do 1.0)
                 float[] candidateCoordinates = new float[numberOfFeatures];
                 for (int i = 0; i < numberOfFeatures; i++)
                 {
@@ -34,34 +32,21 @@ namespace AisIntrusionDetection.Models
                 }
 
                 Detector candidate = new Detector(candidateCoordinates, radius);
-
-                // KROK 2 ze schematu: Match (porównanie z Self set)
-                //bool isMatch = false;
-                //foreach (var selfPacket in selfSet)
-                //{
-                //    if (candidate.IsMatch(selfPacket))
-                //    {
-                //        isMatch = true;
-                //        break; // Zahaczył o zdrowy ruch! Przerywamy sprawdzanie.
-                //    }
-                //}
-
-                // UŻYWASZ Parallel.ForEach, które automatycznie rozrzuci pakiety na Twoje 12 rdzeni logicznych!
                 bool isMatch = false;
 
                 Parallel.ForEach(selfSet, (selfPacket, state) =>
                 {
-                    if (candidate.IsMatch(selfPacket))
+                    // Przekazujemy do IsMatch SAMĄ tablicę z cechami (Data)
+                    if (candidate.IsMatch(selfPacket.Data))
                     {
                         isMatch = true;
-                        state.Break(); // To przerywa pętle na wszystkich rdzeniach, jeśli choć jeden znalazł wirusa (oszczędność czasu!)
+                        state.Break();
                     }
                 });
 
-                // Zapis lub odrzucenie
                 if (!isMatch)
                 {
-                    matureDetectors.Add(candidate); // MATCH == NO -> Detektor przeżywa
+                    matureDetectors.Add(candidate);
                 }
             }
 

@@ -1,6 +1,8 @@
 ﻿using AisIntrusionDetection.Algorithms;
+using AisIntrusionDetection.Algos;
 using AisIntrusionDetection.Interop;
 using AisIntrusionDetection.Models;
+using System.Globalization;
 
 namespace AisIntrusionDetection
 {
@@ -8,36 +10,35 @@ namespace AisIntrusionDetection
     {
         static void Main()
         {
-            Console.WriteLine("--- SYSTEM DETEKCJI INTRUZÓW (BIAI) ---");
-            Console.WriteLine("Tryb: FAZA UCZENIA (Obiekty Antigen + Wielowątkowość)\n");
+            string dataFilePath = "NSL-KDD.arff"; // Ścieżka do pliku z danymi
+            int maxRowsToLoad = 20000; // Maksymalna liczba wierszy do załadowania
+            int featuresCount = 41; // Liczba cech (kolumn) do załadowania
+            int detectorsToGenerate = 50; // Liczba detektorów do wygenerowania
+            float detectorRadius = 0.5f; // Promień detektora (próg dopasowania)
 
-            // 1. Zbiór mockowanych Antygenów (Teraz z etykietami!)
-            List<Antigen> mockSelfSet = new List<Antigen>
-            {
-                new Antigen(new float[] { 0.2f, 0.2f, 0.2f }, "normal"),
-                new Antigen(new float[] { 0.25f, 0.21f, 0.19f }, "normal"),
-                new Antigen(new float[] { 0.8f, 0.8f, 0.8f }, "normal"),
-                new Antigen(new float[] { 0.78f, 0.82f, 0.85f }, "normal")
-            };
+            // 1. Wczytujemy WSZYSTKO przez  Parser C++
+            DataLoader loader = new DataLoader(dataFilePath,maxRowsToLoad, featuresCount);
+            List<Antigen> allData = loader.LoadData();
 
-            int featuresCount = 3;
-            int detectorsToGenerate = 10;
-            float detectorRadius = 0.15f;
+            // 2. PODZIAŁ DANYCH (np. 80% do nauki, 20% do testów)
+            // W prawdziwym projekcie zrobilibyśmy losowy podział, tu dla przykładu bierzemy filtry:
+            //List<Antigen> trainSet = allData.Where(antigen => antigen.Attack == false).ToList();
+            List<Antigen> trainSet = allData.Where(a => a.Attack == false).Take(5000).ToList();
+            List<Antigen> testSet = allData.Skip(5000).Take(2000).ToList();
 
-            // 2. Odpalenie NSA
+            Console.WriteLine($"Wczytano {allData.Count} pakietów. Z tego {trainSet.Count} to ruch prawidłowy (Self).");
+
+            // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
             NegativeSelection nsa = new NegativeSelection();
-            List<Detector> matureDetectors = nsa.GenerateDetectors(mockSelfSet, featuresCount, detectorsToGenerate, detectorRadius);
+            List<Detector> matureDetectors = nsa.GenerateDetectors(trainSet, featuresCount-1, detectorsToGenerate, detectorRadius);
 
-            // 3. Wypisanie wyników
-            Console.WriteLine("\nGOTOWE DETEKTORY:");
-            for (int i = 0; i < matureDetectors.Count; i++)
-            {
-                var coords = matureDetectors[i].Coordinates;
-                Console.WriteLine($"Detektor {i + 1:D2}: [{coords[0]:F3}, {coords[1]:F3}, {coords[2]:F3}]");
-            }
+            // 4. FAZA TESTOWANIA I OCENY MODELU
+            ModelEvaluator evaluator = new ModelEvaluator();
+            evaluator.Evaluate(matureDetectors, testSet);
 
+            Console.WriteLine("\nKoniec działania programu.");
             Console.ReadLine();
         }
-    
-}
+
+    }
 }

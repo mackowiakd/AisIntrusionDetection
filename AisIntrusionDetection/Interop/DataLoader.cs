@@ -5,21 +5,28 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static AisIntrusionDetection.Interop.NativeMethods;
 
 namespace AisIntrusionDetection.Interop
 {
     public class DataLoader
     {
-        // Importujemy naszą funkcję z C++
-        [DllImport("TrafficParserCpp.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int LoadAndParseDataset(
-            string filePath,
-            [Out] float[] outputArray, // [Out] podpowiada kompilatorowi, że C++ będzie tu wpisywać dane
-            int maxRows,
-            int featuresCount);
+    
+        public string filePath { get; private set; }
+        public int maxRows = 1000; // Maksymalna liczba wierszy do wczytania (dla bezpieczeństwa)
+        public int featuresCount = 40; // Liczba cech + 1 (dla etykiety)
+        public int rowsLoaded = 0; // Licznik faktycznie przetworzonych wierszy (do debugowania)
 
-        // Elegancka metoda dla reszty programu w C#
-        public List<Antigen> LoadData(string filePath, int maxRows, int featuresCount)
+
+        public DataLoader(string fp, int r, int fc){ 
+            this.filePath = fp;
+            this.maxRows = r;
+            this.featuresCount = fc;    
+        }
+          
+            
+      
+        public List<Antigen> LoadData()
         {
             Console.WriteLine($"[DataLoader] Alokacja pamięci dla {maxRows} wierszy...");
 
@@ -29,7 +36,7 @@ namespace AisIntrusionDetection.Interop
 
             // 2. MAGIA P/INVOKE: Przekazujemy tablicę do C++
             // C# wstrzymuje oddech, wysyła wskaźnik do C++, C++ mieli plik i wpisuje liczby
-            int rowsLoaded = LoadAndParseDataset(filePath, flatArray, maxRows, featuresCount);
+            rowsLoaded = Interop.NativeMethods.LoadAndParseDataset(filePath, flatArray, maxRows, featuresCount);
 
             if (rowsLoaded <= 0)
             {
@@ -44,21 +51,27 @@ namespace AisIntrusionDetection.Interop
 
             for (int i = 0; i < rowsLoaded; i++)
             {
-                float[] features = new float[featuresCount - 1]; // -1, bo ostatnią kolumną będzie nasz TrueLabel!
+                float[] features = new float[featuresCount - 1]; // -1, bo ostatnią kolumną będzie nasz Attack!
 
                 // Kopiujemy jeden wiersz z płaskiej tablicy do małej tablicy cech
                 Array.Copy(flatArray, i * featuresCount, features, 0, featuresCount - 1);
 
                 // SPOSÓB NA ETYKIETY:
                 // Załóżmy, że umówiłaś się ze swoim C++, że OSTATNIA LICZBA w wierszu 
-                // to zakodowana etykieta (np. 0.0f to "normal", a 1.0f to "attack")
-                float labelCode = flatArray[(i * featuresCount) + (featuresCount - 1)];
-                string label = (labelCode == 0.0f) ? "normal" : "attack";
+                // to zakodowana etykieta (np. 0.0f to "normal", a 1.0f to "Attack")
+                // Pobieramy wartość liczbową etykiety z tablicy
+                float labelValue = flatArray[(i * featuresCount) + (featuresCount - 1)];
 
-                dataset.Add(new Antigen(features, label));
+                // Tłumaczymy to na bool: jeśli wartość to 1.0f, to jest to atak (true)
+                bool attack = (labelValue == 1.0f);
+
+
+                dataset.Add(new Antigen(features, attack));
             }
 
             return dataset;
         }
+
+       
     }
 }
