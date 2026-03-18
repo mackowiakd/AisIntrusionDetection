@@ -36,7 +36,7 @@ namespace AisIntrusionDetection.Interop
 
             // 2. MAGIA P/INVOKE: Przekazujemy tablicę do C++
             // C# wstrzymuje oddech, wysyła wskaźnik do C++, C++ mieli plik i wpisuje liczby
-            rowsLoaded = Interop.NativeMethods.LoadAndParseDataset(filePath, flatArray, maxRows, featuresCount);
+            rowsLoaded = NativeMethods.LoadAndParseDataset(filePath, flatArray, maxRows, featuresCount);
 
             if (rowsLoaded <= 0)
             {

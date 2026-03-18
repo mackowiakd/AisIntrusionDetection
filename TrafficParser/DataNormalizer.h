@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <cmath>
 
 enum class ColumnType { REAL, ENUM, LABEL };
 
@@ -25,7 +26,9 @@ public:
     // Ta funkcja zarz¹dza ruchem!
     static float NormalizeValue(const std::string& rawValue, const ColumnDefinition& colDef, bool last_col) {
         if (colDef.type == ColumnType::REAL) {
-            float val = std::stof(rawValue); // konwersja string -> float
+            // ZMIANA TUTAJ: Logarytm t³umi¹cy gigantyczne wartoœci odstaj¹ce!
+           
+            float val = std::log(1.0f + std::stof(rawValue));
             return ScaleMinMax(val, colDef.minVal, colDef.maxVal);
         }
         else if (colDef.type == ColumnType::ENUM || colDef.type == ColumnType::LABEL ) {
@@ -46,7 +49,7 @@ private:
 		if (colDef.enumLabels.size() == 1) return 0.0f; // Jeœli jest tylko jedna opcja, zawsze zwracamy 0.0f
         // Szukamy elementu
         if (last_col) {
-            if (val == "normal.") return 0.0f;
+            if (val == "normal") return 0.0f;
 			else return 1.0f;
         }
         auto it = std::find(colDef.enumLabels.begin(), colDef.enumLabels.end(), val);

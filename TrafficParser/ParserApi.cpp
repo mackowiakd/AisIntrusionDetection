@@ -8,6 +8,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <cmath>
 
 
 // Funkcja pomocnicza do ciêcia stringa po przecinku(warto wrzuciæ na górê pliku lub do utilsów)
@@ -61,7 +62,11 @@ extern "C" __declspec(dllexport) int LoadAndParseDataset(const char* filePath, f
 
                 // Zaczynamy od i = 0, bo tu s¹ ju¿ same czyste enumy
                 for (int i = 0; i < labels.size(); i++) {
-                    // (Tu warto jeszcze usun¹æ apostrofy ' z labels[i], jeœli tam s¹)
+                    std::string cleanOpt = labels[i];
+                    // Usuwamy apostrofy
+                    cleanOpt.erase(std::remove(cleanOpt.begin(), cleanOpt.end(), '\''), cleanOpt.end());
+                    // Usuwamy spacje (niektóre opcje w ARFF maj¹ spacjê po przecinku)
+                    cleanOpt.erase(std::remove(cleanOpt.begin(), cleanOpt.end(), ' '), cleanOpt.end());
                     colDef.enumLabels.push_back(labels[i]);
                 }
             }
@@ -93,7 +98,9 @@ extern "C" __declspec(dllexport) int LoadAndParseDataset(const char* filePath, f
         // Przechodzimy przez wyciête s³owa i aktualizujemy nasz 'schema'
         for (int i = 0; i < rowValues.size(); i++) {
             if (schema[i].type == ColumnType::REAL) {
-                float val = std::stof(rowValues[i]); // String to Float
+
+                // ZMIANA TUTAJ: Logarytm t³umi¹cy gigantyczne wartoœci odstaj¹ce!
+                float val = std::log(1.0f + std::stof(rowValues[i]));
                 if (val < schema[i].minVal) schema[i].minVal = val;
                 if (val > schema[i].maxVal) schema[i].maxVal = val;
             }

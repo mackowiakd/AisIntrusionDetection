@@ -10,15 +10,20 @@ namespace AisIntrusionDetection
     {
         static void Main()
         {
-            string dataFilePath = "NSL-KDD.arff"; // Ścieżka do pliku z danymi
+            //string path= Directory.GetCurrentDirectory(); + filename - na przylosz sciezka wzgledna
+            string dataFilePath = @"C:\Users\Dominika\source\repos\JA\AisIntrusionDetection\KDDTrain+_20Percent.arff"; // Ścieżka do pliku z danymi
             int maxRowsToLoad = 20000; // Maksymalna liczba wierszy do załadowania
-            int featuresCount = 41; // Liczba cech (kolumn) do załadowania
-            int detectorsToGenerate = 50; // Liczba detektorów do wygenerowania
-            float detectorRadius = 0.5f; // Promień detektora (próg dopasowania)
+            int featuresCount = 42; // Liczba cech (kolumn) do załadowania
+            int detectorsToGenerate = 5000; // Liczba detektorów do wygenerowania
+            float detectorRadius = 0.2f; // Promień detektora (próg dopasowania)
 
             // 1. Wczytujemy WSZYSTKO przez  Parser C++
             DataLoader loader = new DataLoader(dataFilePath,maxRowsToLoad, featuresCount);
+            Console.WriteLine("\n[DEBUG] Cechy pierwszego pakietu:");
+           
             List<Antigen> allData = loader.LoadData();
+            var firstPacketFeatures = allData[0].Data.Select(f => f.ToString("F4"));
+            Console.WriteLine(string.Join(", ", firstPacketFeatures) + "\n");
 
             // 2. PODZIAŁ DANYCH (np. 80% do nauki, 20% do testów)
             // W prawdziwym projekcie zrobilibyśmy losowy podział, tu dla przykładu bierzemy filtry:
