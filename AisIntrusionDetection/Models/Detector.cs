@@ -19,21 +19,22 @@ namespace AisIntrusionDetection.Algorithms
             Radius = radius;
         }
 
-        // Funkcja sprawdzająca czy pakiet znajduje się w zasięgu detektora (MATCH)
-        public bool IsMatch(float[] networkPacket)
+        // NOWA FUNKCJA: Wyciągamy samą matematykę Pitagorasa na zewnątrz
+        public float CalculateDistance(float[] networkPacket)
         {
             float distance = 0;
-
-            // Twierdzenie Pitagorasa dla wielu wymiarów (Odległość euklidesowa)
             for (int i = 0; i < Coordinates.Length; i++)
             {
                 float diff = Coordinates[i] - networkPacket[i];
                 distance += diff * diff;
             }
-            distance = (float)Math.Sqrt(distance);
+            return (float)Math.Sqrt(distance);
+        }
 
-            // Jeśli odległość jest mniejsza lub równa promieniowi - mamy Match!
-            return distance <= Radius;
+        public bool IsMatch(float[] networkPacket)
+        {
+            // Match jest wtedy, gdy policzona odległość jest mniejsza niż promień
+            return CalculateDistance(networkPacket) <= Radius;
         }
     }
 }
