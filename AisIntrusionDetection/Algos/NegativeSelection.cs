@@ -80,10 +80,10 @@ namespace AisIntrusionDetection.Models
                     }
                 });
 
-                // CZY BALON JEST WYSTARCZAJĄCO DUŻY?
+                
                 if (nearestSelfDistance >= minAllowedRadius)
                 {
-                    // BINGO! Ustawiamy promień tak, by detektor "dotykał" najbliższego zdrowego pakietu
+                    // Ustaw promień tak, by detektor "dotykał" najbliższego zdrowego pakietu
                     // Odejmujemy mikroskopijny margines (np. 0.001f) dla bezpieczeństwa!
                     candidate.Radius = nearestSelfDistance - 0.001f;
 
