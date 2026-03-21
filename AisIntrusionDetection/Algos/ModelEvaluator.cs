@@ -9,7 +9,15 @@ namespace AisIntrusionDetection.Algos
 {
     public class ModelEvaluator
     {
-        public void Evaluate(List<Detector> matureDetectors, List<Antigen> testSet)
+        public class EvaluationMetrics
+        {
+            public int TP { get; set; }
+            public int FP { get; set; }
+            public int TN { get; set; }
+            public int FN { get; set; }
+            public float Accuracy { get; set; }
+        }
+        public EvaluationMetrics Evaluate(List<Detector> matureDetectors, List<Antigen> testSet)
         {
             Console.WriteLine($"\n[Evaluator] Rozpoczynam testowanie {testSet.Count} pakietów na {matureDetectors.Count} detektorach...");
 
@@ -46,6 +54,14 @@ namespace AisIntrusionDetection.Algos
             });
 
             PrintMetrics(truePositives, falsePositives, trueNegatives, falseNegatives, testSet.Count);
+            return new EvaluationMetrics
+            {
+                TP = truePositives,
+                FP = falsePositives,
+                TN = trueNegatives,
+                FN = falseNegatives,
+                Accuracy = ((float)(truePositives + trueNegatives) / testSet.Count) * 100.0f
+            };
         }
 
         private void PrintMetrics(int tp, int fp, int tn, int fn, int total)
