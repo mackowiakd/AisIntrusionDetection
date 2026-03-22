@@ -35,7 +35,7 @@ namespace AisIntrusionDetection
 
             // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
             NegativeSelection nsa = new NegativeSelection();
-            List<Detector> matureDetectors = nsa.GenerateDetectors(trainSet, featuresCount-1, detectorsToGenerate, detectorRadius);
+            List<Detector> matureDetectors = nsa.GenerateDetectors_v2(trainSet, featuresCount-1, detectorsToGenerate, detectorRadius);
 
             // 4. FAZA TESTOWANIA I OCENY MODELU
             ModelEvaluator evaluator = new ModelEvaluator();
