@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using static AisIntrusionDetection.Algos.ModelEvaluator;
@@ -30,7 +31,50 @@ namespace AisIntrusionDetection.Interop
          *  - Oś Y Logarytmiczna liczba prób (Attempts) potrzebnych do wygenerowania 5000 detektorów
          * 
          * */
+        public void ProfilingVsAttempts(List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
+        {
+       
+            string headerLine = "Version,DetectorsCount,Radius";
+            bool fileExists = File.Exists(this.filePath);
 
+            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
+
+            foreach (int detCount in sizesToTest)
+            {
+                float radius = 0.25f;
+                NegativeSelection nsa = new NegativeSelection();
+
+          
+                nsa.GenerateDetectors_v0(trainSet, featuresCount - 1, detCount, radius);
+                int attemptsV0 = nsa.attempts;
+                nsa.GenerateDetectors_v1(trainSet, featuresCount - 1, detCount, radius);
+                int attemptsV1 = nsa.attempts;
+
+
+                // Testujemy (pobieramy obiekt metrics)
+                ModelEvaluator evaluator = new ModelEvaluator();
+
+
+                // Używamy StreamWriter w bloku using (automatycznie zamyka plik)
+                using (StreamWriter sw = new StreamWriter(filePath, append: true))
+                {
+                    // Jeśli plik jest nowy, dodaj nagłówki kolumn
+                    if (!fileExists)
+                    {
+                        sw.WriteLine(headerLine);
+                    }
+
+                    // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
+                    string line = $" V.0,{detCount},{radius.ToString()},{attemptsV0}";
+                    sw.WriteLine(line);
+                    line = $" V.1,{detCount},{radius.ToString()},{attemptsV1}";
+                    sw.WriteLine(line);
+                }
+
+            }
+
+           
+        }
 
         /*@ Test 
          * 
@@ -38,14 +82,34 @@ namespace AisIntrusionDetection.Interop
          * parametry: 
          *  - Liczba wygenerowanych detektorow (np. 1k, 5k, 10k, 20k)
          *  - Oś Y1: Accuracy ; Oś Y2: Wykryte Ataki (TP)
-         *
-         3.Analiza progu czułości V-Detectora (Kompromis TP vs FP)
-         * parametry: 
-         *  - minRadius, 
-         *  - Liczba pakietów (Jedna linia dla TP, druga dla FP)
          * 
          * */
-        public void LogToCsv_DetSensitvLCurve( int detectorsCount, float minRadius, int attempts, EvaluationMetrics metrics)
+        public void run_DetSensitvity(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
+        {
+            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
+
+            foreach (int numDetectors in sizesToTest)
+            {
+                float radius = 0.1f;
+                NegativeSelection nsa = new NegativeSelection();
+
+                // Uczymy
+                List<Detector> detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, numDetectors, radius);
+
+                // Testujemy (pobieramy obiekt metrics)
+                ModelEvaluator evaluator = new ModelEvaluator();
+                metrics = evaluator.Evaluate(detectors, testSet);
+
+                // Zapisujemy przez naszą nową klasę!
+                // Uwaga: musisz dodać do klasy NegativeSelection publiczną właściwość 'Attempts', 
+                // która trzyma liczbę prób z ostatniego uruchomienia, żeby ją tu przekazać.
+                LogToCsvUniversal(numDetectors, radius, nsa.attempts, metrics);
+            }
+        }
+        /*@ Uniwersalna funkcja do logowania wyników do CSV, która może być używana przez różne testy.
+         * niech przyjmuje liste parametrow + ich nazw
+         */
+        public void LogToCsvUniversal( int detectorsCount, float minRadius, int attempts, EvaluationMetrics metrics)
         {
             bool fileExists = File.Exists(this.filePath);
            
@@ -66,28 +130,18 @@ namespace AisIntrusionDetection.Interop
             }
         }
 
-        public void run_DetSensitvity( EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount )
+       
+         /*
+         3.Analiza progu czułości V-Detectora(Kompromis TP vs FP)
+         * parametry: 
+         *  - minRadius, 
+         *  - Liczba pakietów(Jedna linia dla TP, druga dla FP)
+         */
+        public void SensitivityThresholdAnalysis( EvaluationMetrics metrics, List<float> radiusInterv, List<float> tpCount, List<float> fpCount)
         {
-            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
-            
-            foreach (int numDetectors in sizesToTest)
-            {
-                float radius = 0.1f;
-                NegativeSelection nsa = new NegativeSelection();
 
-                // Uczymy
-                List<Detector> detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, numDetectors, radius);
-
-                // Testujemy (pobieramy obiekt metrics)
-                ModelEvaluator evaluator = new ModelEvaluator();
-                 metrics = evaluator.Evaluate(detectors, testSet);
-
-                // Zapisujemy przez naszą nową klasę!
-                // Uwaga: musisz dodać do klasy NegativeSelection publiczną właściwość 'Attempts', 
-                // która trzyma liczbę prób z ostatniego uruchomienia, żeby ją tu przekazać.
-                ResultsLogger.LogToCsv_DetSensitvLCurve(csvPath, numDetectors, radius, nsa.LastAttempts, metrics);
-            }
         }
+
         /*@ Test
          4. Rozkład Przestrzenny Detektorów (Histogram Promieni)
          * parametry:
@@ -98,23 +152,9 @@ namespace AisIntrusionDetection.Interop
         {
            
 
-            bool fileExists = File.Exists(filePath);
+        
 
-            // Używamy StreamWriter w bloku using (automatycznie zamyka plik)
-            using (StreamWriter sw = new StreamWriter(filePath, append: true))
-            {
-                // Jeśli plik jest nowy, dodaj nagłówki kolumn
-                if (!fileExists)
-                {
-                    sw.WriteLine("RadiusHist,MinRadius,Attempts,TP,FP,TN,FN,Accuracy");
-                }
-
-                // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
-                string line = $"{detCount},{minRadius.ToString(CultureInfo.InvariantCulture)},{attempts}," +
-                              $"{metrics.TP},{metrics.FP},{metrics.TN},{metrics.FN},{metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
-
-                sw.WriteLine(line);
-            }
+           
         }
     }
 }

@@ -11,6 +11,8 @@ namespace AisIntrusionDetection.Models
     public class NegativeSelection
     {
         private Random _random = new Random();
+        public int requiredDetectors;
+        public int attempts{ get; private set; }
 
         // NOWA FUNKCJA: Profiluje dane i zwraca idealne potęgi dla każdej ze 41 kolumn
         private float[] CalculateFeatureExponents(List<Antigen> selfSet, int numberOfFeatures)
@@ -43,7 +45,8 @@ namespace AisIntrusionDetection.Models
         public List<Detector> GenerateDetectors_v2(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float minAllowedRadius)
         {
             List<Detector> matureDetectors = new List<Detector>();
-            int attempts = 0;
+            this.attempts = 0;
+            this.requiredDetectors = requiredDetectors;
             float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
 
             Console.WriteLine($"[NSA] Rozpoczynam generowanie {requiredDetectors} detektorów...");
@@ -92,6 +95,7 @@ namespace AisIntrusionDetection.Models
                     matureDetectors.Add(candidate);
                 }
             }
+            
             Console.WriteLine($"[NSA] Ukończono! Wygenerowano {requiredDetectors} detektorów w {attempts} próbach losowania.");
             return matureDetectors;
 
@@ -101,7 +105,8 @@ namespace AisIntrusionDetection.Models
         public List<Detector> GenerateDetectors_v1(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float Radius)
         {
             List<Detector> matureDetectors = new List<Detector>();
-            int attempts = 0;
+            this.attempts = 0;
+            this.requiredDetectors = requiredDetectors;
             float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
 
             Console.WriteLine($"[NSA] Rozpoczynam generowanie {requiredDetectors} detektorów...");
@@ -145,11 +150,11 @@ namespace AisIntrusionDetection.Models
         }
 
         /*Wersja 0 (Baseline): Ślepe losowanie + sztywny promień.*/
-        public List<Detector> GenerateDetectors_v0(List<float[]> selfSet, int numberOfFeatures, int requiredDetectors, float radius)
+        public List<Detector> GenerateDetectors_v0(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float radius)
         {
             List<Detector> matureDetectors = new List<Detector>();
-            int attempts = 0; // Licznik prób, żeby sprawdzić jak bardzo algorytm się męczy
-
+            this.attempts = 0;
+            this.requiredDetectors = requiredDetectors;
             Console.WriteLine($"[NSA] Rozpoczynam generowanie {requiredDetectors} detektorów...");
 
             // Pętla kręci się, aż nie wyhodujemy wymaganej liczby detektorów
@@ -170,7 +175,7 @@ namespace AisIntrusionDetection.Models
 
                 Parallel.ForEach(selfSet, (selfPacket, state) =>
                 {
-                    if (candidate.IsMatch(selfPacket))
+                    if (candidate.IsMatch(selfPacket.Data))
                     {
                         isMatch = true;
                         state.Break(); // To przerywa pętle na wszystkich rdzeniach, jeśli choć jeden znalazł wirusa (oszczędność czasu!)
