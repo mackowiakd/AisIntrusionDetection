@@ -2,6 +2,7 @@
 using AisIntrusionDetection.Algos;
 using AisIntrusionDetection.Models;
 using System.Globalization;
+using System.Net.Security;
 using static AisIntrusionDetection.Algos.ModelEvaluator;
 
 namespace AisIntrusionDetection.Interop
@@ -9,9 +10,10 @@ namespace AisIntrusionDetection.Interop
     /* Ta klasa jest odpowiedzialna za logowanie wyników do pliku CSV. 
      * wszystkie wykresy maja miec tu metody opwiedzialne za zebranie danych i zapis do pliku.
      */
+    
     public class ResultsLogger
     {
-        private string csvPath = "eksperymenty_vdetector.csv";
+        
         private string filePath;
 
         public ResultsLogger(string fileName) {
@@ -56,10 +58,11 @@ namespace AisIntrusionDetection.Interop
                     if (!fileExists)
                     {
                         sw.WriteLine(headerLine);
+                        fileExists = true;
                     }
 
                     // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
-                    string line = $" V.0,{detCount},{radius.ToString()},{attemptsV0}";
+                    string line = $" V.0,{detCount},{radius.ToString(CultureInfo.InvariantCulture)},{attemptsV0}";
                     sw.WriteLine(line);
                     line = $" V.1,{detCount},{radius.ToString()},{attemptsV1}";
                     sw.WriteLine(line);
@@ -103,6 +106,7 @@ namespace AisIntrusionDetection.Interop
                     if (!fileExists)
                     {
                         sw.WriteLine("DetectorsCount,Radius,TP ,Accuracy");
+                        fileExists = true;
                     }
 
                     // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
@@ -150,7 +154,8 @@ namespace AisIntrusionDetection.Interop
                         // Jeśli plik jest nowy, dodaj nagłówki kolumn
                         if (!fileExists)
                         {
-                            sw.WriteLine("DetectorsCount,Radius,Attempts,TP,FP");
+                            sw.WriteLine("DetectorsCount,MinRadius,Attempts,TP,FP");
+                            fileExists = true;
                         }
 
                         // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
@@ -169,37 +174,41 @@ namespace AisIntrusionDetection.Interop
          *  -Przedziały wielkości wyliczonego promienia (np. 0.0-0.2, 0.2-0.4, 0.4-0.6...)
          *  - Liczba detektorów w każdym przedziale ktore osignely dany promien
          */
-        public void RadiusHist( EvaluationMetrics metrics, List<float> radiusInterv, List<float> detCount )
+        public void RadiusHist(List<Antigen> trainSet, int featuresCount)
         {
-           
-
-        
-
-           
-        }
-
-        /*@ Uniwersalna funkcja do logowania wyników do CSV, która może być używana przez różne testy.
-        * niech przyjmuje liste parametrow + ich nazw
-        */
-        public void LogToCsvUniversal(int detectorsCount, float minRadius, int attempts, EvaluationMetrics metrics)
-        {
+            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
             bool fileExists = File.Exists(this.filePath);
 
-            // Używamy StreamWriter w bloku using (automatycznie zamyka plik)
-            using (StreamWriter sw = new StreamWriter(filePath, append: true))
+            foreach (int detCount in sizesToTest)
             {
-                // Jeśli plik jest nowy, dodaj nagłówki kolumn
-                if (!fileExists)
+                NegativeSelection nsa = new NegativeSelection();
+
+                // 1. GENERUJEMY TYLKO RAZ DLA DANEJ WIELKOŚCI!
+                // Ustawiamy próg na mikroskopijny (0.01f), żeby złapać absolutnie wszystkie balony do statystyk
+                List<Detector> detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, 0.01f);
+
+                // 2. ROBIMY HISTOGRAM (LINQ grupuje i zlicza detektory w ułamku sekundy)
+                int bin1 = detectors.Count(d => d.Radius > 0.0f && d.Radius <= 0.05f);
+                int bin2 = detectors.Count(d => d.Radius > 0.05f && d.Radius <= 0.10f);
+                int bin3 = detectors.Count(d => d.Radius > 0.10f && d.Radius <= 0.15f);
+                int bin4 = detectors.Count(d => d.Radius > 0.15f && d.Radius <= 0.20f);
+                int bin5 = detectors.Count(d => d.Radius > 0.20f); // Wszystkie gigantyczne balony
+
+                // 3. ZAPISUJEMY WYNIK DO EXCELA (Jeden wiersz dla danej populacji)
+                using (StreamWriter sw = new StreamWriter(filePath, append: true))
                 {
-                    sw.WriteLine("RadiusHist,MinRadius,Attempts,TP,FP,TN,FN,Accuracy");
+                    if (!fileExists)
+                    {
+                        sw.WriteLine("DetectorsCount,Bin_0_05,Bin_05_10,Bin_10_15,Bin_15_20,Bin_Over_20");
+                        fileExists = true;
+                    }
+
+                    // Zapisujemy policzone koszyki (biny)
+                    string line = $"{detCount},{bin1},{bin2},{bin3},{bin4},{bin5}";
+                    sw.WriteLine(line);
                 }
-
-                // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
-                string line = $"{detectorsCount},{minRadius.ToString(CultureInfo.InvariantCulture)},{attempts}," +
-                              $"{metrics.TP},{metrics.FP},{metrics.TN},{metrics.FN},{metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
-
-                sw.WriteLine(line);
             }
         }
+      
     }
 }

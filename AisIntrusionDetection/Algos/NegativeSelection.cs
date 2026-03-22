@@ -12,6 +12,7 @@ namespace AisIntrusionDetection.Models
     {
         private Random _random = new Random();
         public int requiredDetectors;
+        public float actualRadius { get; private set; }
         public int attempts{ get; private set; }
 
         // NOWA FUNKCJA: Profiluje dane i zwraca idealne potęgi dla każdej ze 41 kolumn
@@ -91,11 +92,12 @@ namespace AisIntrusionDetection.Models
                     // Ustaw promień tak, by detektor "dotykał" najbliższego zdrowego pakietu
                     // Odejmujemy mikroskopijny margines (np. 0.001f) dla bezpieczeństwa!
                     candidate.Radius = nearestSelfDistance - 0.001f;
+                    this.actualRadius = candidate.Radius;
 
                     matureDetectors.Add(candidate);
                 }
             }
-            
+           
             Console.WriteLine($"[NSA] Ukończono! Wygenerowano {requiredDetectors} detektorów w {attempts} próbach losowania.");
             return matureDetectors;
 
