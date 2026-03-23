@@ -14,7 +14,7 @@ namespace AisIntrusionDetection.Interop
     public class ResultsLogger
     {
         
-        private string filePath;
+        public string filePath { get; set; }   
 
         public ResultsLogger(string fileName) {
             this.filePath = fileName;

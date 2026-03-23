@@ -33,16 +33,32 @@ namespace AisIntrusionDetection
 
             Console.WriteLine($"Wczytano {allData.Count} pakietów. Z tego {trainSet.Count} to ruch prawidłowy (Self).");
 
-            // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
-            NegativeSelection nsa = new NegativeSelection();
-            List<Detector> matureDetectors = nsa.GenerateDetectors_v2(trainSet, featuresCount-1, detectorsToGenerate, detectorRadius);
+            //Data for charts
+            int testNum = 1;
+            string filePath = $"chart{testNum}.csv";
+            
+            ResultsLogger dataForCharts = new ResultsLogger(filePath);
+            dataForCharts.ProfilingVsAttempts(trainSet, testSet, featuresCount);
+            testNum++;
+            dataForCharts.lCurve(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);
+            testNum++;
+            dataForCharts.SensitivityThresholdAnalysis(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);
+            testNum++;
+            dataForCharts.RadiusHist(trainSet, featuresCount);
 
-            // 4. FAZA TESTOWANIA I OCENY MODELU
-            ModelEvaluator evaluator = new ModelEvaluator();
-            evaluator.Evaluate(matureDetectors, testSet);
+            /*
+             // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
+             NegativeSelection nsa = new NegativeSelection();
+             List<Detector> matureDetectors = nsa.GenerateDetectors_v2(trainSet, featuresCount-1, detectorsToGenerate, detectorRadius);
 
-            Console.WriteLine("\nKoniec działania programu.");
-            Console.ReadLine();
+             // 4. FAZA TESTOWANIA I OCENY MODELU
+             ModelEvaluator evaluator = new ModelEvaluator();
+             evaluator.Evaluate(matureDetectors, testSet);
+
+             Console.WriteLine("\nKoniec działania programu.");
+             Console.ReadLine();
+
+             */
         }
 
     }
