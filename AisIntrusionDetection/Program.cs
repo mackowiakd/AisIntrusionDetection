@@ -33,18 +33,7 @@ namespace AisIntrusionDetection
 
             Console.WriteLine($"Wczytano {allData.Count} pakietów. Z tego {trainSet.Count} to ruch prawidłowy (Self).");
 
-            //Data for charts
-            int testNum = 1;
-            string filePath = $"chart{testNum}.csv";
-            
-            ResultsLogger dataForCharts = new ResultsLogger(filePath);
-            dataForCharts.ProfilingVsAttempts(trainSet, testSet, featuresCount);
-            testNum++;
-            dataForCharts.lCurve(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);
-            testNum++;
-            dataForCharts.SensitivityThresholdAnalysis(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);
-            testNum++;
-            dataForCharts.RadiusHist(trainSet, featuresCount);
+
 
             /*
              // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
@@ -59,6 +48,21 @@ namespace AisIntrusionDetection
              Console.ReadLine();
 
              */
+
+            // Usuwamy: ResultsLogger logger = new ResultsLogger();
+
+            //Console.WriteLine("Generowanie danych do Wykresu 1...");
+            //ResultsLogger.ProfilingVsAttempts(trainSet, testSet, featuresCount);
+
+            Console.WriteLine("Generowanie danych do Wykresu 2...");
+            ResultsLogger.LCurve(new ModelEvaluator.EvaluationMetrics(),trainSet, testSet, featuresCount);
+
+            //Console.WriteLine("Generowanie danych do Wykresu 3...");
+            //ResultsLogger.SensitivityThresholdAnalysis(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);
+
+            //Console.WriteLine("Generowanie danych do Wykresu 4...");
+            //ResultsLogger.RadiusHist(trainSet, featuresCount);
+
         }
 
     }

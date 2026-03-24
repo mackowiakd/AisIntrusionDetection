@@ -11,14 +11,9 @@ namespace AisIntrusionDetection.Interop
      * wszystkie wykresy maja miec tu metody opwiedzialne za zebranie danych i zapis do pliku.
      */
     
-    public class ResultsLogger
+    public static class ResultsLogger
     {
         
-        public string filePath { get; set; }   
-
-        public ResultsLogger(string fileName) {
-            this.filePath = fileName;
-        }
         /* @ Test
          * 
          1. Wpływ Profilowania na Koszt Generowania (Problem Pustej Przestrzeni)
@@ -27,50 +22,42 @@ namespace AisIntrusionDetection.Interop
          *  - Oś Y Logarytmiczna liczba prób (Attempts) potrzebnych do wygenerowania 5000 detektorów
          * 
          * */
-        public void ProfilingVsAttempts(List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
+        public static void ProfilingVsAttempts(List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
         {
-       
-            string headerLine = "Version,DetectorsCount,Radius";
-            bool fileExists = File.Exists(this.filePath);
 
+            string filePath = "Wykres1_Koszt_Ewolucyjny.csv";
+            bool fileExists = File.Exists(filePath);
             int[] sizesToTest = { 1000, 5000, 10000, 20000 };
 
             foreach (int detCount in sizesToTest)
             {
-                float radius = 0.25f;
+                
                 NegativeSelection nsa = new NegativeSelection();
-
-          
+                // wartosc promienia tzw "SWEET SPOT" Z WYKRESU NR 3!
+                float radius = 0.5f;
+                // Test Wersji 0 (Ślepe losowanie)
                 nsa.GenerateDetectors_v0(trainSet, featuresCount - 1, detCount, radius);
                 int attemptsV0 = nsa.attempts;
+
+                // Test Wersji 1 (Profilowanie)
                 nsa.GenerateDetectors_v1(trainSet, featuresCount - 1, detCount, radius);
                 int attemptsV1 = nsa.attempts;
 
-
-                // Testujemy (pobieramy obiekt metrics)
-                ModelEvaluator evaluator = new ModelEvaluator();
-
-
-                // Używamy StreamWriter w bloku using (automatycznie zamyka plik)
                 using (StreamWriter sw = new StreamWriter(filePath, append: true))
                 {
-                    // Jeśli plik jest nowy, dodaj nagłówki kolumn
                     if (!fileExists)
                     {
-                        sw.WriteLine(headerLine);
+                        sw.WriteLine("Version,DetectorsCount,Radius,Attempts");
                         fileExists = true;
                     }
 
-                    // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
-                    string line = $" V.0,{detCount},{radius.ToString(CultureInfo.InvariantCulture)},{attemptsV0}";
-                    sw.WriteLine(line);
-                    line = $" V.1,{detCount},{radius.ToString()},{attemptsV1}";
-                    sw.WriteLine(line);
+                    string radStr = radius.ToString(CultureInfo.InvariantCulture);
+                    sw.WriteLine($"V.0,{detCount},{radStr},{attemptsV0}");
+                    sw.WriteLine($"V.1,{detCount},{radStr},{attemptsV1}");
                 }
-
             }
 
-           
+
         }
 
         /*@ Test 
@@ -81,10 +68,12 @@ namespace AisIntrusionDetection.Interop
          *  - Oś Y1: Accuracy ; Oś Y2: Wykryte Ataki (TP)
          * 
          * */
-        public void lCurve(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
+        public static void LCurve(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
         {
-            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
-            bool fileExists = File.Exists(this.filePath);
+            string filePath = "Wykres2_Krzywa_Uczenia.csv";
+            // Dodaliśmy wartości pośrednie, żeby krzywa była płynna!
+            int[] sizesToTest = { 100, 500, 1000, 2500, 5000, 7500, 10000, 15000, 20000 };
+            bool fileExists = File.Exists(filePath);
             float radius = 0.1f;
 
             foreach (int detCount in sizesToTest)
@@ -105,13 +94,12 @@ namespace AisIntrusionDetection.Interop
                     // Jeśli plik jest nowy, dodaj nagłówki kolumn
                     if (!fileExists)
                     {
-                        sw.WriteLine("DetectorsCount,Radius,TP ,Accuracy");
+                        sw.WriteLine("DetectorsCount,Radius,TP,Accuracy");
                         fileExists = true;
                     }
 
-                    // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
-                    string line = $"{detCount},{radius.ToString(CultureInfo.InvariantCulture)}" +
-                                  $"{metrics.TP}, {metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
+                    // Wpisujemy kolejno: detCount, radius, TP, Accuracy
+                    string line = $"{detCount},{radius.ToString(CultureInfo.InvariantCulture)},{metrics.TP},{metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
 
                     sw.WriteLine(line);
                 }
@@ -126,12 +114,14 @@ namespace AisIntrusionDetection.Interop
          *  - minRadius, 
          *  - Liczba pakietów(Jedna linia dla TP, druga dla FP)
          */
-        public void SensitivityThresholdAnalysis(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
+        public static void SensitivityThresholdAnalysis(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
         {
+            string filePath = "Wykres3_Analiza_Progu.csv";
             int[] sizesToTest = { 1000, 5000, 10000, 20000 };
-            float[] radiusSize = { 0.05f, 0.1f, 0.15f, 0.2f };
+            // Rozszerzamy zakres do bardzo ryzykownych wartości (nawet 1.5!)
+            float[] radiusSize = { 0.05f, 0.1f, 0.3f, 0.5f, 0.8f, 1.2f, 1.5f };
 
-            bool fileExists = File.Exists(this.filePath);
+            bool fileExists = File.Exists(filePath);
 
             foreach (int detCount in sizesToTest)
             {
@@ -158,10 +148,8 @@ namespace AisIntrusionDetection.Interop
                             fileExists = true;
                         }
 
-                        // Wpisujemy wiersz z danymi. InvariantCulture zapewnia kropki zamiast przecinków w ułamkach
-                        string line = $"{detCount},{minRadius.ToString(CultureInfo.InvariantCulture)}" +
-                                      $"{metrics.TP}, {metrics.FP}";
-
+                        string line = $"{detCount},{minRadius.ToString(CultureInfo.InvariantCulture)}," +
+                                    $"{nsa.attempts},{metrics.TP},{metrics.FP}";
                         sw.WriteLine(line);
                     }
                 }
@@ -174,10 +162,11 @@ namespace AisIntrusionDetection.Interop
          *  -Przedziały wielkości wyliczonego promienia (np. 0.0-0.2, 0.2-0.4, 0.4-0.6...)
          *  - Liczba detektorów w każdym przedziale ktore osignely dany promien
          */
-        public void RadiusHist(List<Antigen> trainSet, int featuresCount)
+        public static void RadiusHist(List<Antigen> trainSet, int featuresCount)
         {
+            string filePath = "Wykres4_Histogram.csv";
             int[] sizesToTest = { 1000, 5000, 10000, 20000 };
-            bool fileExists = File.Exists(this.filePath);
+            bool fileExists = File.Exists(filePath);
 
             foreach (int detCount in sizesToTest)
             {
@@ -187,24 +176,30 @@ namespace AisIntrusionDetection.Interop
                 // Ustawiamy próg na mikroskopijny (0.01f), żeby złapać absolutnie wszystkie balony do statystyk
                 List<Detector> detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, 0.01f);
 
-                // 2. ROBIMY HISTOGRAM (LINQ grupuje i zlicza detektory w ułamku sekundy)
-                int bin1 = detectors.Count(d => d.Radius > 0.0f && d.Radius <= 0.05f);
-                int bin2 = detectors.Count(d => d.Radius > 0.05f && d.Radius <= 0.10f);
-                int bin3 = detectors.Count(d => d.Radius > 0.10f && d.Radius <= 0.15f);
-                int bin4 = detectors.Count(d => d.Radius > 0.15f && d.Radius <= 0.20f);
-                int bin5 = detectors.Count(d => d.Radius > 0.20f); // Wszystkie gigantyczne balony
+                //  Dynamiczne szukanie przedziałów na podst maxRadius, żeby histogram był dobrze rozłożony (nie za szerokie, nie za wąskie)
+                float maxRadius = detectors.Max(d => d.Radius);
+                float step = maxRadius / 5.0f; // Dzielimy przestrzeń na 5 równych koszyków
 
-                // 3. ZAPISUJEMY WYNIK DO EXCELA (Jeden wiersz dla danej populacji)
+                // LINQ precyzyjnie sortuje detektory na podstawie wyliczonego kroku
+                int bin1 = detectors.Count(d => d.Radius >= 0.0f && d.Radius <= step);
+                int bin2 = detectors.Count(d => d.Radius > step && d.Radius <= 2 * step);
+                int bin3 = detectors.Count(d => d.Radius > 2 * step && d.Radius <= 3 * step);
+                int bin4 = detectors.Count(d => d.Radius > 3 * step && d.Radius <= 4 * step);
+                int bin5 = detectors.Count(d => d.Radius > 4 * step);
+
                 using (StreamWriter sw = new StreamWriter(filePath, append: true))
                 {
                     if (!fileExists)
                     {
-                        sw.WriteLine("DetectorsCount,Bin_0_05,Bin_05_10,Bin_10_15,Bin_15_20,Bin_Over_20");
+                        // Zapisujemy też MaxRadius i Step, żeby skrypt w Pythonie wiedział, jak opisać oś X!
+                        sw.WriteLine("DetectorsCount,MaxRadius,Step,Bin1,Bin2,Bin3,Bin4,Bin5");
                         fileExists = true;
                     }
 
-                    // Zapisujemy policzone koszyki (biny)
-                    string line = $"{detCount},{bin1},{bin2},{bin3},{bin4},{bin5}";
+                    string line = $"{detCount}," +
+                                  $"{maxRadius.ToString(CultureInfo.InvariantCulture)}," +
+                                  $"{step.ToString(CultureInfo.InvariantCulture)}," +
+                                  $"{bin1},{bin2},{bin3},{bin4},{bin5}";
                     sw.WriteLine(line);
                 }
             }
