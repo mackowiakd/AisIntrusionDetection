@@ -19,7 +19,7 @@ namespace AisIntrusionDetection.Algos
         }
         public EvaluationMetrics Evaluate(List<Detector> matureDetectors, List<Antigen> testSet)
         {
-            Console.WriteLine($"\n[Evaluator] Rozpoczynam testowanie {testSet.Count} pakietów na {matureDetectors.Count} detektorach...");
+            Console.WriteLine($"\n[Evaluator] Rozpoczynam testowanie {testSet.Count}z promieniem {matureDetectors[0].Radius} pakietów na \n{matureDetectors.Count} detektorach...");
 
             // Używamy bezpiecznych liczników wielowątkowych (Interlocked)
             int truePositives = 0;

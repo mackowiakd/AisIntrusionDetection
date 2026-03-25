@@ -118,8 +118,18 @@ namespace AisIntrusionDetection.Interop
         {
             string filePath = "Wykres3_Analiza_Progu.csv";
             int[] sizesToTest = { 1000, 5000, 10000, 20000 };
-            // Rozszerzamy zakres do bardzo ryzykownych wartości (nawet 1.5!)
-            float[] radiusSize = { 0.05f, 0.1f, 0.3f, 0.5f, 0.8f, 1.2f, 1.5f };
+            // 1. DYNAMICZNE SONDOWANIE rozstawu pakietow (promienie)
+            NegativeSelection nsaProbe = new NegativeSelection();
+            float robustMaxRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 2000);
+
+            // I tablicę opieramy teraz na tym bezpiecznym maksimum (nie musimy już ucinać * 0.95f)
+            float[] radiusSize = {
+            robustMaxRadius * 0.10f,
+            robustMaxRadius * 0.25f,
+            robustMaxRadius * 0.50f,
+            robustMaxRadius * 0.75f,
+            robustMaxRadius * 1.00f
+             };
 
             bool fileExists = File.Exists(filePath);
 

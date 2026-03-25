@@ -47,6 +47,8 @@ namespace AisIntrusionDetection.Models
         {
             List<Detector> matureDetectors = new List<Detector>();
             this.attempts = 0;
+            // ZMIANA: Określamy limit prób (np. 10 000 prób na każdy wymagany detektor)
+            int maxAttemptsLimit = requiredDetectors * 10000;
             this.requiredDetectors = requiredDetectors;
             float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
 
@@ -56,6 +58,14 @@ namespace AisIntrusionDetection.Models
             {
                 attempts++;
                 float[] candidateCoordinates = new float[numberOfFeatures];
+                attempts++;
+
+                // WENTYL BEZPIECZEŃSTWA:
+                if (attempts > maxAttemptsLimit)
+                {
+                    Console.WriteLine($"\n[UWAGA] Osiągnięto limit prób ({maxAttemptsLimit}). Wygenerowano tylko {matureDetectors.Count}/{requiredDetectors} detektorów. Przestrzeń jest zbyt ciasna na ten promień!");
+                    break; // Przerywamy pętlę i zwracamy to, co mamy!
+                }
                 for (int i = 0; i < numberOfFeatures; i++)
                 {
                     // ZMIANA: Używamy dynamicznej potęgi wyliczonej dla konkretnej kolumny (i)
@@ -195,6 +205,65 @@ namespace AisIntrusionDetection.Models
             return matureDetectors;
         }
 
+        /*
+         * zadaniem tej metody jest rzucenie (np. 2000) losowych rzutek w przestrzeń i sprawdzenie
+         *  jaka jest największa możliwa dziura między zdrowymi pakietami.
+         *  => moze jakis procentowy rozklad odległości między zdrowymi pakietami?
+         */
+        // Dodaj to wewnątrz klasy NegativeSelection
+        public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int sampleSize = 2000)
+        {
+          
+
+            // ZMIANA: Zamiast trzymać tylko Max, zapisujemy WSZYSTKIE znalezione luki
+            List<float> foundRadii = new List<float>();
+
+            for (int i = 0; i < sampleSize; i++)
+            {
+                float[] candidateCoordinates = new float[numberOfFeatures];
+                for (int j = 0; j < numberOfFeatures; j++)
+                {
+                    candidateCoordinates[j] = (float)_random.NextDouble();
+                }
+
+                Detector candidate = new Detector(candidateCoordinates, 0f);
+                float nearestSelfDistance = float.MaxValue;
+                object syncLock = new object();
+
+                Parallel.ForEach(selfSet, (selfPacket) =>
+                {
+                    float dist = candidate.CalculateDistance(selfPacket.Data);
+                    if (dist < nearestSelfDistance)
+                    {
+                        lock (syncLock)
+                        {
+                            if (dist < nearestSelfDistance) nearestSelfDistance = dist;
+                        }
+                    }
+                });
+
+                foundRadii.Add(nearestSelfDistance);
+            }
+
+            // STATYSTYKA ROZKŁADU:
+            foundRadii.Sort(); // Sortujemy od najmniejszej do największej dziury
+
+            float min = foundRadii.First();
+            float max = foundRadii.Last(); // To był nasz stary, podatny na anomalie Max
+            float median = foundRadii[foundRadii.Count / 2]; // Środek rozkładu
+
+            // 95. Percentyl: Odcinamy 5% największych anomalii!
+            float percentile95 = foundRadii[(int)(foundRadii.Count * 0.95)];
+
+            Console.WriteLine($"[Statystyka Przestrzeni]:");
+            Console.WriteLine($" - Najmniejsza luka: {min:F4}");
+            Console.WriteLine($" - Mediana (Typowa luka): {median:F4}");
+            Console.WriteLine($" - 95. Percentyl: {percentile95:F4} (Uznajemy to za bezpieczny, twardy limit!)");
+            Console.WriteLine($" - Absolutny Max (Możliwa anomalia!): {max:F4}\n");
+
+            // Zwracamy 95. percentyl zamiast Maxa. 
+            return percentile95;
+        }
     }
 
 
