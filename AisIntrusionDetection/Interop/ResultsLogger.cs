@@ -111,7 +111,7 @@ namespace AisIntrusionDetection.Interop
          /*
          3.Analiza progu czułości V-Detectora(Kompromis TP vs FP)
          * parametry: 
-         *  - minRadius, 
+         *  - targetRadius, 
          *  - Liczba pakietów(Jedna linia dla TP, druga dla FP)
          */
         public static void SensitivityThresholdAnalysis(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
@@ -133,16 +133,46 @@ namespace AisIntrusionDetection.Interop
 
             bool fileExists = File.Exists(filePath);
 
+            float globalScaleFactor = 1.0f;
             foreach (int detCount in sizesToTest)
             {
-                foreach (float minRadius in radiusSize)
+               
+                foreach (float targetRadius in radiusSize)
                 {
+                    List<Detector> detectors = new List<Detector>();
                     NegativeSelection nsa = new NegativeSelection();
 
-                    // Uczymy
-                    List<Detector> detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, minRadius);
+                    float currentRadius = targetRadius * globalScaleFactor;
+                   
 
-                    // Testujemy (pobieramy obiekt metrics)
+                   
+                    //  pętla Fallback 
+                    while (true)
+                    {
+                       
+                        nsa = new NegativeSelection(); // Tworzymy nowy obiekt, żeby zresetować liczniki prób
+                        detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, currentRadius);
+
+                        // Sprawdzamy, czy algorytm dostarczył pełną armię
+                        if (detectors.Count >= detCount)
+                        {
+                            break; // Sukces! Wychodzimy z pętli Fallback i idziemy testować
+                        }
+                        else
+                        {
+                            // Feedback z NSA: Przestrzeń była za ciasna.
+                            Console.WriteLine($"\n[Adaptacja] Promień {currentRadius:F4} jest fizycznie za duży dla {detCount} detektorów!");
+
+                            // Zmniejszamy wymagania o 5%  => tzreba przeskalowac cala tablcie radius!
+                            globalScaleFactor *= 0.95f;
+                            // Wyliczamy nowy promień na podstawie pomniejszonej skali
+                            currentRadius = targetRadius * globalScaleFactor;
+
+                            Console.WriteLine($"[Adaptacja] Zmniejszam promień o 5% -> Nowy cel: {currentRadius:F4}. Próbuję ponownie...");
+                        }
+                    }
+
+                    // Kiedy w końcu się uda, testujemy i zapisujemy wynik
                     ModelEvaluator evaluator = new ModelEvaluator();
                     metrics = evaluator.Evaluate(detectors, testSet);
 
@@ -158,7 +188,7 @@ namespace AisIntrusionDetection.Interop
                             fileExists = true;
                         }
 
-                        string line = $"{detCount},{minRadius.ToString(CultureInfo.InvariantCulture)}," +
+                        string line = $"{detCount},{targetRadius.ToString(CultureInfo.InvariantCulture)}," +
                                     $"{nsa.attempts},{metrics.TP},{metrics.FP}";
                         sw.WriteLine(line);
                     }

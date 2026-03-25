@@ -43,7 +43,81 @@ namespace AisIntrusionDetection.Models
         }
 
         /*Wersja 2 (V-Detector): Adaptacyjny rozkład potęgowy + dynamiczny promień. */
+
         public List<Detector> GenerateDetectors_v2(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float minAllowedRadius)
+        {
+            List<Detector> matureDetectors = new List<Detector>();
+            this.attempts = 0;
+            this.requiredDetectors = requiredDetectors;
+            float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
+
+            Console.WriteLine($"[NSA] Generowanie {requiredDetectors} det. (Promień >= {minAllowedRadius:F4})...");
+
+            float minAllowedRadiusSq = minAllowedRadius * minAllowedRadius;
+
+            // NOWOŚĆ: Licznik nieudanych prób Z RZĘDU (Early Stopping)
+            int consecutiveFails = 0;
+
+            // Jeśli 2000 razy pod rząd algorytm nie znajdzie luki, poddaje się NATYCHMIAST.
+            int maxConsecutiveFails = 2000;
+
+            while (matureDetectors.Count < requiredDetectors)
+            {
+                this.attempts++;
+
+                // SZYBKI WENTYL BEZPIECZEŃSTWA
+                if (consecutiveFails > maxConsecutiveFails)
+                {
+                    Console.WriteLine($"[NSA] Przestrzeń całkowicie zablokowana! Poddaję się po {maxConsecutiveFails} porażkach z rzędu. (Zrobiono {matureDetectors.Count}/{requiredDetectors})");
+                    break; // Wychodzi z pętli w ułamek sekundy!
+                }
+
+                float[] candidateCoordinates = new float[numberOfFeatures];
+                for (int i = 0; i < numberOfFeatures; i++)
+                {
+                    candidateCoordinates[i] = (float)Math.Pow(_random.NextDouble(), featureExponents[i]);
+                }
+
+                float nearestSelfDistanceSq = float.MaxValue;
+
+                foreach (var selfPacket in selfSet)
+                {
+                    float distSq = 0f;
+                    float[] selfData = selfPacket.Data;
+
+                    for (int j = 0; j < numberOfFeatures; j++)
+                    {
+                        float diff = candidateCoordinates[j] - selfData[j];
+                        distSq += diff * diff;
+                    }
+
+                    if (distSq < nearestSelfDistanceSq)
+                    {
+                        nearestSelfDistanceSq = distSq;
+                    }
+                }
+
+                // Czy detektor przeżył?
+                if (nearestSelfDistanceSq >= minAllowedRadiusSq)
+                {
+                    Detector candidate = new Detector(candidateCoordinates, 0f);
+                    candidate.Radius = (float)Math.Sqrt(nearestSelfDistanceSq) - 0.001f;
+                    this.actualRadius = candidate.Radius;
+                    matureDetectors.Add(candidate);
+
+                    // SUKCES! Resetujemy licznik porażek do zera
+                    consecutiveFails = 0;
+                }
+                else
+                {
+                    // PORAŻKA: Zwiększamy licznik błędów pod rząd
+                    consecutiveFails++;
+                }
+            }
+
+            return matureDetectors;
+        }
+        /*public List<Detector> GenerateDetectors_v2(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float minAllowedRadius)
         {
             List<Detector> matureDetectors = new List<Detector>();
             this.attempts = 0;
@@ -112,6 +186,8 @@ namespace AisIntrusionDetection.Models
             return matureDetectors;
 
         }
+
+        */
 
         /* Wersja 1 (Profilowanie): Adaptacyjny rozkład potęgowy + sztywny promień.*/
         public List<Detector> GenerateDetectors_v1(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float Radius)
@@ -213,7 +289,8 @@ namespace AisIntrusionDetection.Models
         // Dodaj to wewnątrz klasy NegativeSelection
         public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int sampleSize = 2000)
         {
-          
+            //Najpierw wyliczamy potęgi dla przestrzeni!
+            float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
 
             // ZMIANA: Zamiast trzymać tylko Max, zapisujemy WSZYSTKIE znalezione luki
             List<float> foundRadii = new List<float>();
