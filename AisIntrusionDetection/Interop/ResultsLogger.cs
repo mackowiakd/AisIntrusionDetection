@@ -117,19 +117,20 @@ namespace AisIntrusionDetection.Interop
         public static void SensitivityThresholdAnalysis(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
         {
             string filePath = "Wykres3_Analiza_Progu.csv";
-            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
+            int[] sizesToTest = { 1000, 5000, 10000 };
             // 1. DYNAMICZNE SONDOWANIE rozstawu pakietow (promienie)
             NegativeSelection nsaProbe = new NegativeSelection();
             float robustMaxRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 2000);
 
-            // I tablicę opieramy teraz na tym bezpiecznym maksimum (nie musimy już ucinać * 0.95f)
+            //zaczynamy od mozliwie najwiekszej wartosci aby od razu ustalic jaki musi byc wsp zmniejsznia promienia (globalScaleFactor)
             float[] radiusSize = {
-            robustMaxRadius * 0.10f,
-            robustMaxRadius * 0.25f,
-            robustMaxRadius * 0.50f,
+            robustMaxRadius * 1.00f,
             robustMaxRadius * 0.75f,
-            robustMaxRadius * 1.00f
+            robustMaxRadius * 0.50f,
+            robustMaxRadius * 0.25f,
+            robustMaxRadius * 0.10f
              };
+
 
             bool fileExists = File.Exists(filePath);
 
@@ -164,11 +165,11 @@ namespace AisIntrusionDetection.Interop
                             Console.WriteLine($"\n[Adaptacja] Promień {currentRadius:F4} jest fizycznie za duży dla {detCount} detektorów!");
 
                             // Zmniejszamy wymagania o 5%  => tzreba przeskalowac cala tablcie radius!
-                            globalScaleFactor *= 0.95f;
+                            globalScaleFactor *= 0.90f;
                             // Wyliczamy nowy promień na podstawie pomniejszonej skali
                             currentRadius = targetRadius * globalScaleFactor;
 
-                            Console.WriteLine($"[Adaptacja] Zmniejszam promień o 5% -> Nowy cel: {currentRadius:F4}. Próbuję ponownie...");
+                            Console.WriteLine($"[Adaptacja] Zmniejszam promień o {100-globalScaleFactor}% -> Nowy cel: {currentRadius:F4}. Próbuję ponownie...");
                         }
                     }
 
@@ -188,7 +189,7 @@ namespace AisIntrusionDetection.Interop
                             fileExists = true;
                         }
 
-                        string line = $"{detCount},{targetRadius.ToString(CultureInfo.InvariantCulture)}," +
+                        string line = $"{detCount},{currentRadius.ToString(CultureInfo.InvariantCulture)}," +
                                     $"{nsa.attempts},{metrics.TP},{metrics.FP}";
                         sw.WriteLine(line);
                     }

@@ -60,7 +60,7 @@ namespace AisIntrusionDetection.Models
 
             // Jeśli 2000 razy pod rząd algorytm nie znajdzie luki, poddaje się NATYCHMIAST.
             int maxConsecutiveFails = 2000;
-
+            float[] candidateCoordinates = new float[numberOfFeatures];
             while (matureDetectors.Count < requiredDetectors)
             {
                 this.attempts++;
@@ -72,7 +72,7 @@ namespace AisIntrusionDetection.Models
                     break; // Wychodzi z pętli w ułamek sekundy!
                 }
 
-                float[] candidateCoordinates = new float[numberOfFeatures];
+               
                 for (int i = 0; i < numberOfFeatures; i++)
                 {
                     candidateCoordinates[i] = (float)Math.Pow(_random.NextDouble(), featureExponents[i]);
@@ -157,10 +157,10 @@ namespace AisIntrusionDetection.Models
                 {
                     float dist = candidate.CalculateDistance(selfPacket.Data);
 
-                    // Aktualizacja minimum z zabezpieczeniem dla wielowątkowości
+                    // A minimum z zabezpieczeniem dla wielowątkowości
                     if (dist < nearestSelfDistance)
                     {
-                        lock (syncLock)
+                        lock (syncLock) // po co mutex skoro kzady watek dostej inny detektor? 
                         {
                             if (dist < nearestSelfDistance)
                             {
