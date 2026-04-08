@@ -289,6 +289,76 @@ namespace AisIntrusionDetection.Models
             Console.WriteLine($"[NSA] Ukończono! Wygenerowano {requiredDetectors} detektorów w {attempts} próbach losowania.");
             return matureDetectors;
         }
+        /*
+         * v3 for PCA : dynamic radius + no data profiling (slepe losowanie) - bo PCA już i tak skupia dane w "gęstych" obszarach, więc dodatkowe profilowanie jest zbędne.
+         */
+
+
+        // Wersja V3 - Zaprojektowana SPECJALNIE pod gęste przestrzenie po PCA
+        public List<Detector> GenerateDetectors_PCA(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float minAllowedRadius)
+        {
+            List<Detector> matureDetectors = new List<Detector>();
+            int attempts = 0;
+            int consecutiveFails = 0;
+            int maxConsecutiveFails = 10000;
+
+            // Sztywny, MAŁY limit. Skoro zrzucamy miny w lesie, nie potrzebujemy, żeby były gigantyczne!
+            float maxAllowedRadius = 0.25f;
+
+            Console.WriteLine($"[NSA-PCA] Generowanie {requiredDetectors} det. (Promień MIN: {minAllowedRadius:F4} | MAX: {maxAllowedRadius:F4}). Czysta dystrybucja UNIFORM!");
+
+            while (matureDetectors.Count < requiredDetectors)
+            {
+                attempts++;
+                if (consecutiveFails > maxConsecutiveFails) break;
+
+                float[] candidateCoordinates = new float[numberOfFeatures];
+                for (int i = 0; i < numberOfFeatures; i++)
+                {
+                    // CZYSTE LOSOWANIE. Zrzucamy miny w głęboki las (zero grawitacji potęgowej!)
+                    candidateCoordinates[i] = (float)_random.NextDouble();
+                }
+
+                Detector candidate = new Detector(candidateCoordinates, 0);
+                float nearestSelfDistance = float.MaxValue;
+
+                Parallel.ForEach(selfSet, (selfPacket, state) =>
+                {
+                    float dist = candidate.CalculateDistance(selfPacket.Data);
+                    if (dist < nearestSelfDistance)
+                    {
+                        // Uproszczony i szybszy lock
+                        lock (candidate) { if (dist < nearestSelfDistance) nearestSelfDistance = dist; }
+                    }
+                    if (dist < minAllowedRadius) state.Break(); // Trafił w wioskę - przerywamy!
+                });
+
+                if (nearestSelfDistance >= minAllowedRadius)
+                {
+                    // 1. Ustaw promień tak, by dotknąć krawędzi zdrowego ruchu
+                    candidate.Radius = nearestSelfDistance - 0.001f;
+
+                    // 2. KAGANIEC (Radius Clamping) - ucinamy balony do małych min
+                    if (candidate.Radius > maxAllowedRadius)
+                    {
+                        candidate.Radius = maxAllowedRadius;
+                    }
+
+                    matureDetectors.Add(candidate);
+                    consecutiveFails = 0;
+                }
+                else
+                {
+                    consecutiveFails++;
+                }
+            }
+
+            Console.WriteLine($"[NSA-PCA] Ukończono! Wygenerowano {matureDetectors.Count} detektorów w {attempts} próbach.");
+            return matureDetectors;
+        }
+
+
+
 
         /*
          * zadaniem tej metody jest rzucenie (np. 2000) losowych rzutek w przestrzeń i sprawdzenie
