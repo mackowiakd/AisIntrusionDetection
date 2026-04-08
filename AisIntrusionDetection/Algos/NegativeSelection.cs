@@ -35,7 +35,7 @@ namespace AisIntrusionDetection.Models
                 if (mean < 0.01f) mean = 0.01f;
                 if (mean > 0.99f) mean = 0.99f;
 
-                // 2. Magiczny wzór na idealną potęgę dystrybucji
+                // 2. wzór na idealną potęgę dystrybucji
                 exponents[i] = (1.0f / mean) - 1.0f;
             }
 

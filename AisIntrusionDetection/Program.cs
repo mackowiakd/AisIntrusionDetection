@@ -51,11 +51,11 @@ namespace AisIntrusionDetection
 
             // Usuwamy: ResultsLogger logger = new ResultsLogger();
 
-            //Console.WriteLine("Generowanie danych do Wykresu 1...");
-            //ResultsLogger.ProfilingVsAttempts(trainSet, testSet, featuresCount);
+            Console.WriteLine("Generowanie danych do Wykresu 1...");
+            ResultsLogger.ProfilingVsAttempts(trainSet, testSet, featuresCount);
 
-            //Console.WriteLine("Generowanie danych do Wykresu 2...");
-            //ResultsLogger.LCurve(new ModelEvaluator.EvaluationMetrics(),trainSet, testSet, featuresCount);
+            Console.WriteLine("Generowanie danych do Wykresu 2...");
+            ResultsLogger.LCurve(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);
 
             Console.WriteLine("Generowanie danych do Wykresu 3...");
             ResultsLogger.SensitivityThresholdAnalysis(new ModelEvaluator.EvaluationMetrics(), trainSet, testSet, featuresCount);

@@ -34,7 +34,7 @@ namespace AisIntrusionDetection.Interop
                 
                 NegativeSelection nsa = new NegativeSelection();
                 // wartosc promienia tzw "SWEET SPOT" Z WYKRESU NR 3!
-                float radius = 0.5f;
+                float radius = 1.0f;
                 // Test Wersji 0 (Ślepe losowanie)
                 nsa.GenerateDetectors_v0(trainSet, featuresCount - 1, detCount, radius);
                 int attemptsV0 = nsa.attempts;
@@ -74,7 +74,7 @@ namespace AisIntrusionDetection.Interop
             // Dodaliśmy wartości pośrednie, żeby krzywa była płynna!
             int[] sizesToTest = { 100, 500, 1000, 2500, 5000, 7500, 10000, 15000, 20000 };
             bool fileExists = File.Exists(filePath);
-            float radius = 0.1f;
+            float radius = 1.0f;
 
             foreach (int detCount in sizesToTest)
             {
@@ -116,8 +116,8 @@ namespace AisIntrusionDetection.Interop
          */
         public static void SensitivityThresholdAnalysis(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
         {
-            string filePath = "Wykres3_Analiza_Progu.csv";
-            int[] sizesToTest = { 1000, 5000, 10000 };
+            string filePath = "Wykres3.1_Analiza_Progu.csv";
+            int[] sizesToTest = {500, 1000 ,12000,15000 };// 3.0 version only one size of dect geroup
             // 1. DYNAMICZNE SONDOWANIE rozstawu pakietow (promienie)
             NegativeSelection nsaProbe = new NegativeSelection();
             float robustMaxRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 2000);
@@ -127,8 +127,10 @@ namespace AisIntrusionDetection.Interop
             robustMaxRadius * 1.00f,
             robustMaxRadius * 0.75f,
             robustMaxRadius * 0.50f,
-            robustMaxRadius * 0.25f,
-            robustMaxRadius * 0.10f
+            robustMaxRadius * 0.1f,
+            robustMaxRadius * 0.05f,
+            robustMaxRadius * 0.025f,
+            robustMaxRadius * 0.01f
              };
 
 
@@ -185,12 +187,12 @@ namespace AisIntrusionDetection.Interop
                         // Jeśli plik jest nowy, dodaj nagłówki kolumn
                         if (!fileExists)
                         {
-                            sw.WriteLine("DetectorsCount,MinRadius,Attempts,TP,FP");
+                            sw.WriteLine("DetectorsCount,MinRadius,Attempts,TP,FP,Accuracy");
                             fileExists = true;
                         }
 
                         string line = $"{detCount},{currentRadius.ToString(CultureInfo.InvariantCulture)}," +
-                                    $"{nsa.attempts},{metrics.TP},{metrics.FP}";
+                                    $"{nsa.attempts},{metrics.TP},{metrics.FP},{metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
                         sw.WriteLine(line);
                     }
                 }
