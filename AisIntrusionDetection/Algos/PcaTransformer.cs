@@ -65,7 +65,45 @@ namespace AisIntrusionDetection.Algos
             // Budujemy ostateczną macierz projekcji
             _projectionMatrix = DenseMatrix.Build.DenseOfColumns(sortedIndices.Select(i => eigenVectors.Column(i)).ToArray());
         }
+        /*metoda  przyje dane wejściowe (zbiór 41-wymiarowy) i zwraca dane wyjściowe (zbiór zredukowany).*/
+        public List<Antigen> Transform(List<Antigen> trainingData)
+        {
+            // Przygotowujemy nową listę na skompresowane pakiety
+            List<Antigen> transformedData = new List<Antigen>();
 
+            foreach (var packet in trainingData)
+            {
+                // 1. Zbuduj 41-wymiarowy wektor dla TEGO JEDNEGO pakietu
+                double[] dataArray = new double[packet.Data.Length];
+                for (int i = 0; i < packet.Data.Length; i++)
+                {
+                    dataArray[i] = (double)packet.Data[i];
+                }
+                Vector<double> vector = Vector<double>.Build.Dense(dataArray);
+
+                // 2. Centrowanie: odejmujemy wektor średnich wyliczony w fazie FIT
+                Vector<double> centredVector = vector - _meanVector;
+
+                // 3. KOMPRESJA (PCA): Mnożymy 1x41 przez macierz 41x10
+                // MathNet wypluje nam piękny, nowiutki wektor o długości 10!
+                Vector<double> compressedVector = centredVector * _projectionMatrix;
+
+                // 4. Pakujemy wynik z powrotem do obiektu Antigen
+                float[] newData = new float[_targetDimensions];
+                for (int i = 0; i < _targetDimensions; i++)
+                {
+                    // MathNet liczy w double, a nasz Antigen używa float
+                    newData[i] = (float)compressedVector[i];
+                }
+
+                Antigen newPacket = new Antigen(newData,packet.isAnomaly()) ;
+
+               
+                transformedData.Add(newPacket);
+            }
+
+            return transformedData;
+        }
     }
     
 }

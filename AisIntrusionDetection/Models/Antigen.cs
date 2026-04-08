@@ -19,7 +19,10 @@ namespace AisIntrusionDetection.Algorithms
         public bool Attack { get; set; }
 
 
-
+        public bool isAnomaly() { 
+            // Załóżmy, że "normal" to false, a wszystko inne to true (atak)
+            return Attack;
+        }
         public Antigen(float[] features, bool attack)
         {
             Data = features;
