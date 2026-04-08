@@ -49,7 +49,12 @@ namespace AisIntrusionDetection.Models
             List<Detector> matureDetectors = new List<Detector>();
             this.attempts = 0;
             this.requiredDetectors = requiredDetectors;
+            // 1.PROFILOWANIE PRZESTRZENI: Wyliczamy idealne potęgi dla każdej kolumny, by generować kandydatów tam, gdzie jest więcej zdrowego ruchu (więcej szans na znalezienie luk!)
             float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
+
+            // 2. Clamping maxRadius to space capacity
+            Console.WriteLine("[NSA] Skanowanie gęstości przestrzeni w poszukiwaniu optymalnego limitu promienia...");
+            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, 2000);
 
             Console.WriteLine($"[NSA] Generowanie {requiredDetectors} det. (Promień >= {minAllowedRadius:F4})...");
 
@@ -59,7 +64,7 @@ namespace AisIntrusionDetection.Models
             int consecutiveFails = 0;
 
             // Jeśli 2000 razy pod rząd algorytm nie znajdzie luki, poddaje się NATYCHMIAST.
-            int maxConsecutiveFails = 2000;
+            int maxConsecutiveFails = 10000;
             float[] candidateCoordinates = new float[numberOfFeatures];
             while (matureDetectors.Count < requiredDetectors)
             {
@@ -103,10 +108,14 @@ namespace AisIntrusionDetection.Models
                     Detector candidate = new Detector(candidateCoordinates, 0f);
                     candidate.Radius = (float)Math.Sqrt(nearestSelfDistanceSq) - 0.001f;
                     this.actualRadius = candidate.Radius;
-                    matureDetectors.Add(candidate);
+                    // 3. ZABEZPIECZENIE (Radius Clamping) przy użyciu Twojego 95. percentyla!
+                    if (candidate.Radius > dynamicMaxRadius)
+                    {
+                        candidate.Radius = dynamicMaxRadius;
+                    }
 
-                    // SUKCES! Resetujemy licznik porażek do zera
-                    consecutiveFails = 0;
+                    matureDetectors.Add(candidate);
+                    consecutiveFails = 0;   // Resetujemy licznik porażek do zera
                 }
                 else
                 {
@@ -300,7 +309,7 @@ namespace AisIntrusionDetection.Models
                 float[] candidateCoordinates = new float[numberOfFeatures];
                 for (int j = 0; j < numberOfFeatures; j++)
                 {
-                    candidateCoordinates[j] = (float)_random.NextDouble();
+                    candidateCoordinates[j] = (float)Math.Pow(_random.NextDouble(), featureExponents[j]);
                 }
 
                 Detector candidate = new Detector(candidateCoordinates, 0f);
