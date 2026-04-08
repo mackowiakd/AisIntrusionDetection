@@ -16,7 +16,7 @@ namespace AisIntrusionDetection
             int featuresCount = 42; // Liczba cech (kolumn) do załadowania
             int detectorsToGenerate = 5000; // Liczba detektorów do wygenerowania
             float detectorRadius = 0.2f; // Promień detektora (próg dopasowania)
-
+            float pcaRadius = 0.05f; // Promień detektora po redukcji PCA (może być mniejszy, bo dane są skompresowane)
             // 1. Wczytujemy WSZYSTKO przez  Parser C++
             DataLoader loader = new DataLoader(dataFilePath,maxRowsToLoad, featuresCount);
             Console.WriteLine("\n[DEBUG] Cechy pierwszego pakietu:");
@@ -33,23 +33,42 @@ namespace AisIntrusionDetection
 
             Console.WriteLine($"Wczytano {allData.Count} pakietów. Z tego {trainSet.Count} to ruch prawidłowy (Self).");
 
+            // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
+            NegativeSelection nsa = new NegativeSelection();
+            List<Detector> matureDetectorsv2 = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detectorsToGenerate, detectorRadius);
+            List<Detector> matureDetectorsv1 = nsa.GenerateDetectors_v1(trainSet, featuresCount - 1, detectorsToGenerate, detectorRadius);
+            List<Detector> matureDetectorsv0 = nsa.GenerateDetectors_v0(trainSet, featuresCount - 1, detectorsToGenerate, detectorRadius);
+
+            // 3.5.  Redukcja wymiarowości PCA
+            var pca = new PcaTransformer();
+            pca.Fit(trainSet, targetDim: 10);
+
+            var compressedTraining = pca.Transform(trainSet);
+            var compressedTesting = pca.Transform(testSet);
+            // TO JEST KLUCZ DO SUKCESU - Skalujemy wynik PCA z powrotem do [0, 1] !!!
+            pca.NormalizePcaDataTo01(compressedTraining, compressedTesting, 10);
+
+            List<Detector> matureDetectorsv2_pca = nsa.GenerateDetectors_v2(compressedTraining, 10, detectorsToGenerate, pcaRadius);
+            List<Detector> matureDetectorsv1_pca = nsa.GenerateDetectors_v1(compressedTraining, 10, detectorsToGenerate, pcaRadius);
+            List<Detector> matureDetectorsv0_pca = nsa.GenerateDetectors_v0(compressedTraining, 10, detectorsToGenerate, pcaRadius);
+           
+            // 4. FAZA TESTOWANIA I OCENY MODELU
+            ModelEvaluator evaluator = new ModelEvaluator();
+            evaluator.Evaluate(matureDetectorsv2, testSet);
+            evaluator.Evaluate(matureDetectorsv2_pca, compressedTesting);
+            evaluator.Evaluate(matureDetectorsv1, testSet);
+            evaluator.Evaluate(matureDetectorsv1_pca, compressedTesting);
+            evaluator.Evaluate(matureDetectorsv0, testSet);
+            evaluator.Evaluate(matureDetectorsv0_pca, compressedTesting);
+
+            // I odpalasz stary algorytm na skompresowanych danych!
 
 
             /*
-             // 3. Odpalamy trening TYLKO na czystych, zdrowych danych
-             NegativeSelection nsa = new NegativeSelection();
-             List<Detector> matureDetectors = nsa.GenerateDetectors_v2(trainSet, featuresCount-1, detectorsToGenerate, detectorRadius);
-
-             // 4. FAZA TESTOWANIA I OCENY MODELU
-             ModelEvaluator evaluator = new ModelEvaluator();
-             evaluator.Evaluate(matureDetectors, testSet);
-
-             Console.WriteLine("\nKoniec działania programu.");
-             Console.ReadLine();
-
-             */
-
-            // Usuwamy: ResultsLogger logger = new ResultsLogger();
+            
+            // 5. LOGOWANIE WYNIKÓW DO  WYKRESÓW
+           
+           
 
             Console.WriteLine("Generowanie danych do Wykresu 1...");
             ResultsLogger.ProfilingVsAttempts(trainSet, testSet, featuresCount);
@@ -62,6 +81,9 @@ namespace AisIntrusionDetection
 
             Console.WriteLine("Generowanie danych do Wykresu 4...");
             ResultsLogger.RadiusHist(trainSet, featuresCount);
+
+              * 
+             */
 
         }
 

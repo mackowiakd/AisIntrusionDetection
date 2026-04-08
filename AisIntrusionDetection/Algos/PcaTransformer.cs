@@ -104,6 +104,28 @@ namespace AisIntrusionDetection.Algos
 
             return transformedData;
         }
+
+        public void NormalizePcaDataTo01(List<Antigen> train, List<Antigen> test, int dimensions)
+        {
+            for (int i = 0; i < dimensions; i++)
+            {
+                float min = train.Min(x => x.Data[i]);
+                float max = train.Max(x => x.Data[i]);
+                float range = max - min;
+                if (range == 0) range = 1f;
+
+                foreach (var packet in train)
+                    packet.Data[i] = (packet.Data[i] - min) / range;
+
+                foreach (var packet in test)
+                {
+                    float scaled = (packet.Data[i] - min) / range;
+                    if (scaled < 0f) scaled = 0f;
+                    if (scaled > 1f) scaled = 1f;
+                    packet.Data[i] = scaled;
+                }
+            }
+        }
     }
     
 }
