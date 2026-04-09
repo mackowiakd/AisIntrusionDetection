@@ -120,7 +120,7 @@ namespace AisIntrusionDetection.Interop
             int[] sizesToTest = {500, 1000 ,12000,15000 };// 3.0 version only one size of dect geroup
             // 1. DYNAMICZNE SONDOWANIE rozstawu pakietow (promienie)
             NegativeSelection nsaProbe = new NegativeSelection();
-            float robustMaxRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 2000);
+            float robustMaxRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 2000, false);
 
             //zaczynamy od mozliwie najwiekszej wartosci aby od razu ustalic jaki musi byc wsp zmniejsznia promienia (globalScaleFactor)
             float[] radiusSize = {

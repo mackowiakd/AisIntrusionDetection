@@ -54,7 +54,7 @@ namespace AisIntrusionDetection.Models
 
             // 2. Clamping maxRadius to space capacity
             Console.WriteLine("[NSA] Skanowanie gęstości przestrzeni w poszukiwaniu optymalnego limitu promienia...");
-            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, 2000);
+            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, requiredDetectors, isPcaSpace: true);
 
             Console.WriteLine($"[NSA] Generowanie {requiredDetectors} det. (Promień >= {minAllowedRadius:F4})...");
 
@@ -302,10 +302,10 @@ namespace AisIntrusionDetection.Models
             int consecutiveFails = 0;
             int maxConsecutiveFails = 10000;
 
-            // Sztywny, MAŁY limit. Skoro zrzucamy miny w lesie, nie potrzebujemy, żeby były gigantyczne!
-            float maxAllowedRadius = 0.25f;
+            // WYWOŁUJEMY NASZ RADAR Z FLAGĄ PCA = TRUE!
+            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, requiredDetectors, isPcaSpace: true);
 
-            Console.WriteLine($"[NSA-PCA] Generowanie {requiredDetectors} det. (Promień MIN: {minAllowedRadius:F4} | MAX: {maxAllowedRadius:F4}). Czysta dystrybucja UNIFORM!");
+            Console.WriteLine($"[NSA-PCA] Generowanie {requiredDetectors} det. (Promień MIN: {minAllowedRadius:F4} | MAX: {dynamicMaxRadius:F4})");
 
             while (matureDetectors.Count < requiredDetectors)
             {
@@ -339,9 +339,9 @@ namespace AisIntrusionDetection.Models
                     candidate.Radius = nearestSelfDistance - 0.001f;
 
                     // 2. KAGANIEC (Radius Clamping) - ucinamy balony do małych min
-                    if (candidate.Radius > maxAllowedRadius)
+                    if (candidate.Radius > dynamicMaxRadius)
                     {
-                        candidate.Radius = maxAllowedRadius;
+                        candidate.Radius = dynamicMaxRadius;
                     }
 
                     matureDetectors.Add(candidate);
@@ -366,20 +366,36 @@ namespace AisIntrusionDetection.Models
          *  => moze jakis procentowy rozklad odległości między zdrowymi pakietami?
          */
         // Dodaj to wewnątrz klasy NegativeSelection
-        public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int sampleSize = 2000)
+        // sampleSize domyślnie 0 oznacza, że algorytm sam dobierze odpowiednią próbę!
+        public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int expectedDetectors, bool isPcaSpace)
         {
-            //Najpierw wyliczamy potęgi dla przestrzeni!
-            float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
+            // Ustalamy rozsądną próbę badawczą: np. 30% z docelowej liczby detektorów (ale min. 500)
+            int sampleSize = Math.Max(500, (int)(expectedDetectors * 0.3));
 
-            // ZMIANA: Zamiast trzymać tylko Max, zapisujemy WSZYSTKIE znalezione luki
-            List<float> foundRadii = new List<float>();
+            // Jeśli jesteśmy przed PCA, musimy używać profilu potęgowego
+            float[] featureExponents = null;
+            if (!isPcaSpace)
+            {
+                featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
+            }
+
+            List<float> foundRadii = new List<float>(sampleSize);
 
             for (int i = 0; i < sampleSize; i++)
             {
                 float[] candidateCoordinates = new float[numberOfFeatures];
                 for (int j = 0; j < numberOfFeatures; j++)
                 {
-                    candidateCoordinates[j] = (float)Math.Pow(_random.NextDouble(), featureExponents[j]);
+                    if (isPcaSpace)
+                    {
+                        // Po PCA (V3): Czyste, równomierne losowanie do klatki [0, 1]
+                        candidateCoordinates[j] = (float)_random.NextDouble();
+                    }
+                    else
+                    {
+                        // Przed PCA (V2): Grawitacyjne dociąganie do zdrowego ruchu
+                        candidateCoordinates[j] = (float)Math.Pow(_random.NextDouble(), featureExponents[j]);
+                    }
                 }
 
                 Detector candidate = new Detector(candidateCoordinates, 0f);
@@ -401,23 +417,12 @@ namespace AisIntrusionDetection.Models
                 foundRadii.Add(nearestSelfDistance);
             }
 
-            // STATYSTYKA ROZKŁADU:
-            foundRadii.Sort(); // Sortujemy od najmniejszej do największej dziury
-
-            float min = foundRadii.First();
-            float max = foundRadii.Last(); // To był nasz stary, podatny na anomalie Max
-            float median = foundRadii[foundRadii.Count / 2]; // Środek rozkładu
-
-            // 95. Percentyl: Odcinamy 5% największych anomalii!
+            // Wyciągamy statystykę (95 percentyl)
+            foundRadii.Sort();
             float percentile95 = foundRadii[(int)(foundRadii.Count * 0.95)];
 
-            Console.WriteLine($"[Statystyka Przestrzeni]:");
-            Console.WriteLine($" - Najmniejsza luka: {min:F4}");
-            Console.WriteLine($" - Mediana (Typowa luka): {median:F4}");
-            Console.WriteLine($" - 95. Percentyl: {percentile95:F4} (Uznajemy to za bezpieczny, twardy limit!)");
-            Console.WriteLine($" - Absolutny Max (Możliwa anomalia!): {max:F4}\n");
+            Console.WriteLine($"[Statystyka Przestrzeni]: Przebadano {sampleSize} próbek. Bezpieczny próg (95%): {percentile95:F4}");
 
-            // Zwracamy 95. percentyl zamiast Maxa. 
             return percentile95;
         }
     }
