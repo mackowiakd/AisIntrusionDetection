@@ -369,16 +369,12 @@ namespace AisIntrusionDetection.Models
         // sampleSize domyślnie 0 oznacza, że algorytm sam dobierze odpowiednią próbę!
         public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int expectedDetectors, bool isPcaSpace)
         {
-            // Ustalamy rozsądną próbę badawczą: np. 30% z docelowej liczby detektorów (ale min. 500)
+
+            // Dynamiczna wielkość próby do zbadania gęstości lasu
             int sampleSize = Math.Max(500, (int)(expectedDetectors * 0.3));
 
-            // Jeśli jesteśmy przed PCA, musimy używać profilu potęgowego
-            float[] featureExponents = null;
-            if (!isPcaSpace)
-            {
-                featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
-            }
-
+            // ZAWSZE wyliczamy grawitację (potęgi), żeby uniknąć pustych rogów hiperkostki!
+            float[] featureExponents = CalculateFeatureExponents(selfSet, numberOfFeatures);
             List<float> foundRadii = new List<float>(sampleSize);
 
             for (int i = 0; i < sampleSize; i++)
@@ -386,16 +382,8 @@ namespace AisIntrusionDetection.Models
                 float[] candidateCoordinates = new float[numberOfFeatures];
                 for (int j = 0; j < numberOfFeatures; j++)
                 {
-                    if (isPcaSpace)
-                    {
-                        // Po PCA (V3): Czyste, równomierne losowanie do klatki [0, 1]
-                        candidateCoordinates[j] = (float)_random.NextDouble();
-                    }
-                    else
-                    {
-                        // Przed PCA (V2): Grawitacyjne dociąganie do zdrowego ruchu
-                        candidateCoordinates[j] = (float)Math.Pow(_random.NextDouble(), featureExponents[j]);
-                    }
+                    // Losowanie z użyciem Twojego autorskiego profilowania!
+                    candidateCoordinates[j] = (float)Math.Pow(_random.NextDouble(), featureExponents[j]);
                 }
 
                 Detector candidate = new Detector(candidateCoordinates, 0f);
