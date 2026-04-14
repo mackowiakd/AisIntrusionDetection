@@ -295,7 +295,7 @@ namespace AisIntrusionDetection.Models
 
 
         // Wersja V3 - Zaprojektowana SPECJALNIE pod gęste przestrzenie po PCA
-        public List<Detector> GenerateDetectors_PCA(List<Antigen> selfSet, int numberOfFeatures, int requiredDetectors, float minAllowedRadius)
+        public List<Detector> GenerateDetectors_V3pca(List<Antigen> selfSet, int compressedFeatures, int requiredDetectors, float minAllowedRadius)
         {
             List<Detector> matureDetectors = new List<Detector>();
             int attempts = 0;
@@ -303,7 +303,7 @@ namespace AisIntrusionDetection.Models
             int maxConsecutiveFails = 10000;
 
             // WYWOŁUJEMY NASZ RADAR Z FLAGĄ PCA = TRUE!
-            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, requiredDetectors, isPcaSpace: true);
+            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, compressedFeatures, requiredDetectors, isPcaSpace: true);
 
             Console.WriteLine($"[NSA-PCA] Generowanie {requiredDetectors} det. (Promień MIN: {minAllowedRadius:F4} | MAX: {dynamicMaxRadius:F4})");
 
@@ -312,8 +312,8 @@ namespace AisIntrusionDetection.Models
                 attempts++;
                 if (consecutiveFails > maxConsecutiveFails) break;
 
-                float[] candidateCoordinates = new float[numberOfFeatures];
-                for (int i = 0; i < numberOfFeatures; i++)
+                float[] candidateCoordinates = new float[compressedFeatures];
+                for (int i = 0; i < compressedFeatures; i++)
                 {
                     // CZYSTE LOSOWANIE. Zrzucamy miny w głęboki las (zero grawitacji potęgowej!)
                     candidateCoordinates[i] = (float)_random.NextDouble();

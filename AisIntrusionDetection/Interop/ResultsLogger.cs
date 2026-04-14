@@ -247,6 +247,91 @@ namespace AisIntrusionDetection.Interop
                 }
             }
         }
-      
+
+        public static void PcaBenchmarkAnalysis(List<Antigen> rawTrainSet, List<Antigen> rawTestSet)
+        {
+            string filePath = "Wykres5_PCA_A_B_Testing.csv";
+            bool fileExists = File.Exists(filePath);
+
+            // Testujemy wymiary od mocnej kompresji (5) po baseline (41)
+            int[] dimensionsToTest = { 5, 10, 15, 20, 25, 30, 41 };
+            int runs = 3;
+            int detCount = 5000;
+
+            using (StreamWriter sw = new StreamWriter(filePath, append: true))
+            {
+                if (!fileExists)
+                {
+                    // DODANA KOLUMNA: Version (V2_Gravity lub V3_Uniform)
+                    sw.WriteLine("Dimensions,Version,RunID,Attempts,TP,FP,TN,FN,Accuracy");
+                    fileExists = true;
+                }
+
+                foreach (int dim in dimensionsToTest)
+                {
+                    Console.WriteLine($"\n==============================================");
+                    Console.WriteLine($"[PCA Benchmark] Rozpoczynam test dla {dim} wymiarów");
+                    Console.WriteLine($"==============================================");
+
+                    List<Antigen> compressedTrain;
+                    List<Antigen> compressedTest;
+                    float minRadius;
+
+                    if (dim < 41)
+                    {
+                        var pca = new PcaTransformer();
+                        pca.Fit(rawTrainSet, dim);
+                        compressedTrain = pca.Transform(rawTrainSet);
+                        compressedTest = pca.Transform(rawTestSet);
+                        pca.NormalizePcaDataTo01(compressedTrain, compressedTest, dim);
+                        minRadius = 0.05f;
+                    }
+                    else
+                    {
+                        compressedTrain = rawTrainSet;
+                        compressedTest = rawTestSet;
+                        minRadius = 0.20f;
+                    }
+
+                    for (int r = 1; r <= runs; r++)
+                    {
+                        Console.WriteLine($"\n--- Przebieg: {r}/{runs} dla {dim}D ---");
+
+                        // 1. Zbadajmy przestrzeń (jeden sprawiedliwy limit promienia dla obu algorytmów!)
+                        NegativeSelection nsaSonda = new NegativeSelection();
+                      //  float dynamicMaxRadius = nsaSonda.CalculateRobustMaxRadius(compressedTrain, dim, detCount);
+                        
+                        // ==========================================
+                        // TEST 1: V3 (Czyste losowanie - bez grawitacji)
+                        // ==========================================
+                        NegativeSelection nsaV3 = new NegativeSelection();
+                        Console.WriteLine("-> Start V3 (Uniform)...");
+                        List<Detector> detectorsV3 = nsaV3.GenerateDetectors_V3pca(compressedTrain, dim, detCount, minRadius);
+                        ModelEvaluator evalV3 = new ModelEvaluator();
+                        var metricsV3 = evalV3.Evaluate(detectorsV3, compressedTest);
+
+                        sw.WriteLine($"{dim},V3_Uniform,{r},{nsaV3.attempts},{metricsV3.TP},{metricsV3.FP},{metricsV3.TN},{metricsV3.FN},{metricsV3.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                        // ==========================================
+                        // TEST 2: V2 (Grawitacja - Twój główny silnik)
+                        // ==========================================
+                        NegativeSelection nsaV2 = new NegativeSelection();
+                        Console.WriteLine("-> Start V2 (Gravity)...");
+                        // UWAGA: upewnij się, że Twój oryginalny GenerateDetectors_v2 sam sobie nie wylicza znowu MaxRadiusa,
+                        // albo po prostu pozwól mu działać normalnie (on pod maską używa CalculateRobustMaxRadius).
+
+                        List<Detector> detectorsV2 = nsaV2.GenerateDetectors_v2(compressedTrain, dim, detCount, minRadius);
+                        ModelEvaluator evalV2 = new ModelEvaluator();
+                        var metricsV2 = evalV2.Evaluate(detectorsV2, compressedTest);
+
+                        sw.WriteLine($"{dim},V2_Gravity,{r},{nsaV2.attempts},{metricsV2.TP},{metricsV2.FP},{metricsV2.TN},{metricsV2.FN},{metricsV2.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                        sw.Flush();
+                    }
+                }
+            }
+            Console.WriteLine("\n[PCA Benchmark] Zakończono! Zapisano dane do: " + filePath);
+        }
+
     }
 }
