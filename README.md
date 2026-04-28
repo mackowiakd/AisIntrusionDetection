@@ -67,14 +67,44 @@ We conducted a Grid Search over the hyperparameter space to analyze the trade-of
 * Due to the immense sparsity of the 41-dimensional space, adaptive detectors are allowed to grow to **gigantic radii**.
 * During inference (testing on unseen data), these massive spheres inadvertently absorb natural, microscopic deviations present in normal network traffic.
 * This phenomenon leads to an avalanche of False Positives (FP), causing the model's Accuracy to collapse to the 10-20% range.
+## 🔬 Phase 3: Spatial Density Analysis & A/B Algorithmic Testing
+<img width="1600" height="960" alt="pca_v2-v3" src="https://github.com/user-attachments/assets/0cadb435-4306-4a52-b606-b906346fe58e" />
 
-**Architectural Conclusion:** Relying on Euclidean distance in 41 dimensions inevitably leads to distance concentration. Dimensionality reduction (PCA) is strictly required to tighten the gaps between network packets and generate highly accurate, smaller detectors.
+
+Following the implementation of PCA dimensionality reduction, an extensive A/B benchmark was conducted to evaluate the geometric impact of compressed multidimensional spaces on detector generation strategies. 
+
+Two distinct initializations were tested across multiple PCA dimensions (from 5D to 30D, against a 41D baseline):
+* **V2 (Power-Law Gravity):** Forces detectors to spawn in close mathematical proximity to the "self" traffic cluster.
+* **V3 (Uniform Distribution):** Scatters detectors evenly across the normalized hyperspace, combined with a data-driven Maximum Radius limit (95th percentile dynamic clamping).
+
+### 📊 Benchmark Results: The Geometric Paradigm Shift
+*(Results averaged over 3 cross-validation runs per dimension. Configuration: 5000 Detectors, Min-Max Normalization applied).*
+
+| PCA Dimensions | V2 (Gravity) Accuracy | V3 (Uniform) Accuracy | V3 True Positives | V3 False Positives |
+| :---: | :---: | :---: | :---: | :---: |
+| **5D** | 52.37% | 97.82% | 877 | 0 |
+| **10D** | 54.15% | 98.17% | 884 | 0 |
+| **15D** | 32.37% | 98.40% | 889 | 0 |
+| **20D** | 29.38% | **98.67%** | **894** | **0** |
+| **25D** | 33.05% | 98.50% | 891 | 0 |
+| **30D** | 38.10% | 97.03% | 862 | 0 |
+| **41D (Baseline)**| **94.35%*** | 53.95% (Failed) | 0 | 0 |
+*(Note: V2 achieves optimal performance in 41D uncompressed space using specific hyperparameters, while V3 fails entirely).*
+
+### 🧠 Architectural Conclusions:
+The empirical data revealed a critical shift in spatial mechanics caused by Dimensionality Reduction:
+1. **The Curse of Dimensionality (41D):** In the uncompressed 41-dimensional space, the volume is vastly empty. Uniform random generation (V3) fails completely as detectors are lost in hyperspace. The "gravitational" pull of the **V2 algorithm** is strictly required to find the boundaries of normal traffic.
+2. **The Microscopic Suffocation (PCA Space):** PCA drastically condenses the "self" traffic into a highly dense hyper-cluster. Applying the V2 gravitational pull here forces detectors directly into the dense center, immediately clamping their radii to near-zero and rendering them useless against anomalies.
+3. **The Optimal Strategy (PCA + V3 Clamping):** Scattering detectors uniformly (V3) into the compressed PCA space drops them safely into the "Dark Forest" (anomaly space). Empowered by the dynamic radius limit (preventing overgeneralization), they grow to perfectly seal the dense cluster of normal traffic without penetrating it. 
+
+**Ultimate Configuration:** The system achieves its absolute peak performance at **20 Principal Components using V3 Uniform Generation**, hitting an astonishing **98.67% Accuracy with 0 False Positives**. This configuration serves as the perfect, mathematically stable foundation for the final Evolutionary (Genetic Algorithm) optimization phase.
+
 
 ## 📈 Roadmap / Future Optimizations
 
 - [x] Adaptive space profiling for detector generation.
 - [x] V-Detector implementation (Dynamic Radius).
-- [ ] **Dimensionality Reduction (PCA):** Reduce the 41-dimensional space to mitigate the Curse of Dimensionality.
+- [x] **Dimensionality Reduction (PCA):** Reduce the 41-dimensional space to mitigate the Curse of Dimensionality.
 - [ ] **Genetic Algorithm:** Replace random detector generation with crossover and mutation for optimal space coverage.
 ---
 *Created by [mackowiakd] - Open for collaboration and internship opportunities!*
