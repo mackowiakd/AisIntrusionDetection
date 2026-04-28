@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36811.4 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIS_networkTrafific", "AIS_networkTrafific\AIS_networkTrafific.csproj", "{6E9E9D1C-484A-4BE9-A798-B4BEC1D75E8B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6E9E9D1C-484A-4BE9-A798-B4BEC1D75E8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E9E9D1C-484A-4BE9-A798-B4BEC1D75E8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E9E9D1C-484A-4BE9-A798-B4BEC1D75E8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E9E9D1C-484A-4BE9-A798-B4BEC1D75E8B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2456F4D8-6BE4-4D9E-AA7B-0A75E08698E9}
+	EndGlobalSection
+EndGlobal

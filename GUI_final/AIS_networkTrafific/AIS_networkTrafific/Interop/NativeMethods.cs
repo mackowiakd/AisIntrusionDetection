@@ -1,0 +1,35 @@
+﻿using AisIntrusionDetection.Algorithms;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace AisIntrusionDetection.Interop
+{
+    public static class NativeMethods
+    {
+        // --- KONFIGURACJA ŚCIEŻEK ---
+        // Definiujemy stałe wewnątrz klasy. Dzięki temu są widoczne dla DllImport.
+
+#if DEBUG
+        // Ścieżki dla trybu DEBUG
+        public const string CppPath = @"C:\Users\Dominika\source\repos\JA\AisIntrusionDetection\x64\Debug\TrafficParser.dll";
+
+#else
+        // Ścieżki dla trybu RELEASE (obok siebie z plikiem .exe)
+        private const string CppPath = "TrafficParserCpp.dll"
+       
+#endif
+
+        
+        [DllImport(CppPath, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        public static extern int LoadAndParseDataset(
+          string filePath,
+          [Out] float[] outputArray, // [Out] podpowiada kompilatorowi, że C++ będzie tu wpisywać dane
+          int maxRows,
+          int featuresCount);
+
+    }
+}

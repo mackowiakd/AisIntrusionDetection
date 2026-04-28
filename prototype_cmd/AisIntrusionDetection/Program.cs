@@ -30,7 +30,7 @@ namespace AisIntrusionDetection
             // W prawdziwym projekcie zrobilibyśmy losowy podział, tu dla przykładu bierzemy filtry:
             //List<Antigen> trainSet = allData.Where(antigen => antigen.Attack == false).ToList();
             List<Antigen> trainSet = allData.Where(a => a.Attack == false).Take(5000).ToList();
-            List<Antigen> testSet = allData.Skip(5000).Take(2000).ToList();
+            List<Antigen> testSet = allData.Skip(2000).Take(5000).ToList();
 
             Console.WriteLine($"Wczytano {allData.Count} pakietów. Z tego {trainSet.Count} to ruch prawidłowy (Self).");
 
