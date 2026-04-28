@@ -5,8 +5,191 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AIS_networkTrafific"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="AIS NIDS Sandbox (Intrusion Detection System)" Height="700" Width="1100" Background="#F0F2F5" WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,10">
+            <Border.Effect>
+                <DropShadowEffect Color="Gray" BlurRadius="5" ShadowDepth="1" Opacity="0.3"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="BtnLoadData" Content="Wczytaj Plik Danych (.arff)" Width="180" Height="30" Click="BtnLoadData_Click"/>
+
+                <TextBlock Text="Train Size:" Margin="20,0,5,0" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBox x:Name="TxtTrainSize" Text="5000" Width="60" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="Test Size:" Margin="15,0,5,0" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBox x:Name="TxtTestSize" Text="10000" Width="60" VerticalContentAlignment="Center"/>
+
+                <TextBlock Text="Stan Systemu:" Margin="30,0,5,0" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock x:Name="TxtGlobalStatus" Text="Brak Danych" Foreground="Red" VerticalAlignment="Center" FontWeight="Bold"/>
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+
+            <TabItem Header="Analiza Przestrzeni 41D (Baseline)" FontSize="14" FontWeight="SemiBold">
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="White" CornerRadius="8" Margin="5" Padding="15">
+                        <StackPanel>
+                            <TextBlock Text="V0: Ślepe Losowanie (Uniform)" FontSize="16" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Brak grawitacji, stały promień" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+                            <Grid Margin="0,0,0,20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Liczba Detektorów:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtCountV0" Grid.Row="0" Grid.Column="1" Text="5000" Margin="0,2"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Promień (Sztywny):" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtRadiusV0" Grid.Row="1" Grid.Column="1" Text="0.2" Margin="0,2"/>
+                            </Grid>
+
+                            <Button x:Name="BtnRunV0" Content="Uruchom V0" Height="35" Background="#E1E1E1" FontWeight="Bold" Click="BtnRunV0_Click"/>
+
+                            <Border Background="#F9F9F9" CornerRadius="5" Margin="0,20,0,0" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="WYNIKI" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="TP (Ataki):" Width="100"/>
+                                        <TextBlock x:Name="ResV0_TP" Text="-" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="FP (Fałszywe):" Width="100"/>
+                                        <TextBlock x:Name="ResV0_FP" Text="-" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="Trafność:" Width="100"/>
+                                        <TextBlock x:Name="ResV0_Acc" Text="-" FontWeight="Bold" Foreground="#007ACC"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Background="White" CornerRadius="8" Margin="5" Padding="15">
+                        <StackPanel>
+                            <TextBlock Text="V1: Profilowanie (Gravity)" FontSize="16" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Dociąganie do klastra, stały promień" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+                            <Grid Margin="0,0,0,20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Liczba Detektorów:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtCountV1" Grid.Row="0" Grid.Column="1" Text="5000" Margin="0,2"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Promień (Sztywny):" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtRadiusV1" Grid.Row="1" Grid.Column="1" Text="0.2" Margin="0,2"/>
+                            </Grid>
+
+                            <Button x:Name="BtnRunV1" Content="Uruchom V1" Height="35" Background="#E1E1E1" FontWeight="Bold" Click="BtnRunV1_Click"/>
+
+                            <Border Background="#F9F9F9" CornerRadius="5" Margin="0,20,0,0" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="WYNIKI" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="TP (Ataki):" Width="100"/>
+                                        <TextBlock x:Name="ResV1_TP" Text="-" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="FP (Fałszywe):" Width="100"/>
+                                        <TextBlock x:Name="ResV1_FP" Text="-" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="Trafność:" Width="100"/>
+                                        <TextBlock x:Name="ResV1_Acc" Text="-" FontWeight="Bold" Foreground="#007ACC"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Background="White" CornerRadius="8" Margin="5" Padding="15" BorderBrush="#2CA02C" BorderThickness="2">
+                        <StackPanel>
+                            <TextBlock Text="V2: Adaptive V-Detector" FontSize="16" FontWeight="Bold" Foreground="#2CA02C" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Grawitacja + Dynamiczny Promień" FontSize="11" Foreground="Gray" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+                            <Grid Margin="0,0,0,20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Liczba Detektorów:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtCountV2" Grid.Row="0" Grid.Column="1" Text="5000" Margin="0,2"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Promień Minimalny:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtRadiusMinV2" Grid.Row="1" Grid.Column="1" Text="0.05" Margin="0,2"/>
+                            </Grid>
+
+                            <Button x:Name="BtnRunV2" Content="Uruchom V2 (Best for 41D)" Height="35" Background="#2CA02C" Foreground="White" FontWeight="Bold" Click="BtnRunV2_Click"/>
+
+                            <Border Background="#F9F9F9" CornerRadius="5" Margin="0,20,0,0" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="WYNIKI" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="TP (Ataki):" Width="100"/>
+                                        <TextBlock x:Name="ResV2_TP" Text="-" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="FP (Fałszywe):" Width="100"/>
+                                        <TextBlock x:Name="ResV2_FP" Text="-" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="Trafność:" Width="100"/>
+                                        <TextBlock x:Name="ResV2_Acc" Text="-" FontWeight="Bold" Foreground="#007ACC"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBlock Text="Wyliczony Max R:" Width="100" FontSize="11" Foreground="Gray"/>
+                                        <TextBlock x:Name="ResV2_MaxRad" Text="-" FontWeight="Bold" FontSize="11" Foreground="Gray"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Optymalizacja PCA" FontSize="14" FontWeight="SemiBold">
+                <Grid>
+                    <TextBlock Text="Tu zbudujemy analizę V3 z suwakiem PCA w następnym kroku!" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="Gray"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <StatusBar Grid.Row="2" Background="Transparent" Margin="0,10,0,0">
+            <TextBlock x:Name="TxtStatusBar" Text="Gotowy." FontStyle="Italic" Foreground="Gray"/>
+        </StatusBar>
 
     </Grid>
 </Window>
