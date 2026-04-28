@@ -15,7 +15,7 @@ namespace AisIntrusionDetection.Interop
 
 #if DEBUG
         // Ścieżki dla trybu DEBUG
-        public const string CppPath = @"C:\Users\Dominika\source\repos\JA\AisIntrusionDetection\x64\Debug\TrafficParser.dll";
+        public const string CppPath = @"C:\Users\Dominika\source\repos\JA\AisIntrusionDetection\GUI_final\AIS_networkTrafific\TrafficParser\x64\Debug\TrafficParser.dll";
 
 #else
         // Ścieżki dla trybu RELEASE (obok siebie z plikiem .exe)

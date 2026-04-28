@@ -13,8 +13,8 @@ namespace AisIntrusionDetection.Interop
     {
     
         public string filePath { get; private set; }
-        public int maxRows = 1000; // Maksymalna liczba wierszy do wczytania (dla bezpieczeństwa)
-        public int featuresCount = 40; // Liczba cech + 1 (dla etykiety)
+        public int maxRows; // Maksymalna liczba wierszy do wczytania (dla bezpieczeństwa)
+        public int featuresCount; // Liczba cech + 1 (dla etykiety)
         public int rowsLoaded = 0; // Licznik faktycznie przetworzonych wierszy (do debugowania)
 
 

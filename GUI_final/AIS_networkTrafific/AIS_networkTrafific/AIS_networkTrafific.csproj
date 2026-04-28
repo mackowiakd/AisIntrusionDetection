@@ -9,7 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\..\..\prototype_cmd\x64\Debug\TrafficParser.dll" Link="TrafficParser.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="MainWindow.xaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Page>
   </ItemGroup>
 
 </Project>

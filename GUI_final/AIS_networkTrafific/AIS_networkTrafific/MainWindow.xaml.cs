@@ -1,20 +1,13 @@
 ﻿using AIS_networkTrafific.UI.Logic;
-using System.Text;
+using Microsoft.Win32;
+using System;
+using System.Globalization;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace AIS_networkTrafific
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private AisEngine _engine = new AisEngine();
@@ -24,37 +17,119 @@ namespace AIS_networkTrafific
             InitializeComponent();
         }
 
-        // Obsługa przycisku ładowania danych
-        private void BtnLoad_Click(object sender, RoutedEventArgs e)
+        // ==========================================
+        // NOWOŚĆ: Wybór pliku z okna Windows
+        // ==========================================
+        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
         {
-            _engine.LoadData("KDDTrain+_20Percent.arff");
-           // StatusText.Text = "Dane wczytane pomyślnie!";
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Pliki Weka ARFF (*.arff)|*.arff|Wszystkie pliki (*.*)|*.*";
+            if (openFileDialog.ShowDialog() == true)
+            {
+                TxtFilePath.Text = openFileDialog.FileName;
+            }
         }
 
+        // ==========================================
+        // 1. ŁADOWANIE DANYCH
+        // ==========================================
+        private void BtnLoadData_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string filePath = TxtFilePath.Text;
+                int trainSize = int.Parse(TxtTrainSize.Text);
+                int testSize = int.Parse(TxtTestSize.Text);
 
-        // ZMIANA : liczba detektorow  i minradius powinny byc parametrami, a nie na sztywno wpisane! to samo do  v0 i v1 (tez maja liczbe detektorow )
-        // jednie mozna ustawic te liczby jako domyslne przy wpiywaniu w GUI!
+                TxtGlobalStatus.Text = "Ładowanie i skanowanie ARFF...";
+                TxtGlobalStatus.Foreground = Brushes.Orange;
 
-       
-        // // Obsługa przycisku V2 w zakładce 41D 
+                // Przekazujemy dynamiczną ścieżkę do pliku!
+                _engine.LoadData(filePath, 20000, trainSize, testSize);
+
+                TxtGlobalStatus.Text = $"Wczytano [{_engine.OriginalFeatureCount} cech] | Train: {trainSize}, Test: {testSize}";
+                TxtGlobalStatus.Foreground = Brushes.Green;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Błąd: " + ex.Message, "Błąd Krytyczny", MessageBoxButton.OK, MessageBoxImage.Error);
+                TxtGlobalStatus.Text = "Błąd!";
+                TxtGlobalStatus.Foreground = Brushes.Red;
+            }
+        }
+        // ==========================================
+        // 2. OBSŁUGA V0 (Ślepe Losowanie)
+        // ==========================================
+        private async void BtnRunV0_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
+
+            // 1. Czytamy z GUI parametry
+            int count = int.Parse(TxtCountV0.Text);
+            float radius = float.Parse(TxtRadiusV0.Text, CultureInfo.InvariantCulture);
+
+            BtnRunV0.IsEnabled = false;
+            TxtStatusBar.Text = $"Uruchamiam V0 (Detektory: {count}, Promień: {radius})...";
+
+            // 2. Liczymy w tle!
+            var results = await Task.Run(() => _engine.RunV0(radius, count));
+
+            // 3. Wypisujemy wyniki z powrotem do GUI
+            ResV0_TP.Text = results.TP.ToString();
+            ResV0_FP.Text = results.FP.ToString();
+            ResV0_Acc.Text = $"{results.Accuracy:F2}%";
+
+            BtnRunV0.IsEnabled = true;
+            TxtStatusBar.Text = "Gotowy.";
+        }
+
+        // ==========================================
+        // 3. OBSŁUGA V1 (Profilowanie / Grawitacja)
+        // ==========================================
+        private async void BtnRunV1_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
+
+            int count = int.Parse(TxtCountV1.Text);
+            float radius = float.Parse(TxtRadiusV1.Text, CultureInfo.InvariantCulture);
+
+            BtnRunV1.IsEnabled = false;
+            TxtStatusBar.Text = $"Uruchamiam V1 (Detektory: {count}, Promień: {radius})...";
+
+            var results = await Task.Run(() => _engine.RunV1(radius, count));
+
+            ResV1_TP.Text = results.TP.ToString();
+            ResV1_FP.Text = results.FP.ToString();
+            ResV1_Acc.Text = $"{results.Accuracy:F2}%";
+
+            BtnRunV1.IsEnabled = true;
+            TxtStatusBar.Text = "Gotowy.";
+        }
+
+        // ==========================================
+        // 4. OBSŁUGA V2 (Adaptive - Twój mistrz dla 41D)
+        // ==========================================
         private async void BtnRunV2_Click(object sender, RoutedEventArgs e)
         {
-            if (!_engine.IsDataLoaded) return;
+            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
 
-            // Blokujemy UI na czas obliczeń
-            //BtnRunV2.IsEnabled = false;
+            int count = int.Parse(TxtCountV2.Text);
+            float minRadius = float.Parse(TxtRadiusMinV2.Text, CultureInfo.InvariantCulture);
 
-            //// Wykonujemy ciężkie obliczenia w tle
-            //var results = await Task.Run(() => _engine.RunV2(5000, 0.05f, usePca: false));
+            BtnRunV2.IsEnabled = false;
+            TxtStatusBar.Text = $"Uruchamiam V2 Adaptive (Detektory: {count}, Min Radius: {minRadius})...";
 
-            //// Wyświetlamy wyniki
-            //V2_Accuracy.Text = $"{results.Accuracy:F2}%";
-            //V2_TP.Text = results.TP.ToString();
-            //V2_FP.Text = results.FP.ToString();
+            var results = await Task.Run(() => _engine.RunV2(count, minRadius, usePca: false));
 
-            //BtnRunV2.IsEnabled = true;
+            ResV2_TP.Text = results.TP.ToString();
+            ResV2_FP.Text = results.FP.ToString();
+            ResV2_Acc.Text = $"{results.Accuracy:F2}%";
+
+            // To na dole można wyciągnąć, jeśli Twój ModelEvaluator zacząłby zwracać np. MaxRadius
+            ResV2_MaxRad.Text = "Automatyczny";
+
+            BtnRunV2.IsEnabled = true;
+            TxtStatusBar.Text = "Gotowy.";
         }
-
-        /* finalnie dodac opcje step do parametrow kluczowych wykonac wykresy?? */
     }
 }
