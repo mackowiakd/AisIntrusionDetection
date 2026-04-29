@@ -59,15 +59,142 @@ namespace AisIntrusionDetection.Interop
 
 
         }
+        /* @ Test
+         * *0. Krzywa Nasycenia (Wpływ rozmiaru populacji detektorów)
+         * parametry: 
+         * - Liczba wygenerowanych detektorow (np. 1k, 5k, 10k, 20k)
+         * - Oś Y1: Accuracy ; Oś Y2: Wykryte Ataki (TP)
+         * */
+        public static void LCurve(List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
+        {
+            string filePath = "Wykres0_Krzywa_Uczenia.csv";
+            // Zagęszczone wartości do wyrysowania pięknej, gładkiej krzywej w Pythonie
+            int[] sizesToTest = { 100, 500, 1000, 2500, 5000, 7500, 10000, 15000, 20000 };
+            bool fileExists = File.Exists(filePath);
+
+            Console.WriteLine("\n==============================================");
+            Console.WriteLine("[LCurve] KROK 1: Sondowanie gęstości przestrzeni...");
+            NegativeSelection nsaProbe = new NegativeSelection();
+
+            // Używamy Twojej funkcji, aby dynamicznie zbadać przestrzeń.
+            // Podajemy próbkę 5000 detektorów do zbadania dystansów.
+            // UWAGA: Jeśli funkcja wymaga flagi isPcaSpace, dodaj 'false' na końcu.
+            float optimalRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 5000, isPcaSpace: false);
+
+            Console.WriteLine($"[LCurve] Wyliczony optymalny promień (95. percentyl): {optimalRadius:F4}");
+            Console.WriteLine("==============================================\n");
+
+            foreach (int detCount in sizesToTest)
+            {
+                Console.WriteLine($"[LCurve] Trenowanie armii o rozmiarze: {detCount} detektorów...");
+                NegativeSelection nsa = new NegativeSelection();
+
+                // Uczymy system podając nasz wyliczony, naukowy promień
+                List<Detector> detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, optimalRadius);
+
+                // Testujemy
+                ModelEvaluator evaluator = new ModelEvaluator();
+                EvaluationMetrics metrics = evaluator.Evaluate(detectors, testSet);
+
+                // Zapisujemy do CSV w locie
+                using (StreamWriter sw = new StreamWriter(filePath, append: true))
+                {
+                    if (!fileExists)
+                    {
+                        // Dodałem FP (Fałszywe alarmy) do logowania - to kluczowe do analizy!
+                        sw.WriteLine("DetectorsCount,Radius,TP,FP,Accuracy");
+                        fileExists = true;
+                    }
+
+                    string line = $"{detCount},{optimalRadius.ToString(CultureInfo.InvariantCulture)}," +
+                                  $"{metrics.TP},{metrics.FP},{metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
+
+                    sw.WriteLine(line);
+                }
+            }
+
+            Console.WriteLine($"\n[LCurve] Zakończono z sukcesem! Plik gotowy do wykresu: {filePath}");
+        }
+
+     
+
+
+        /* @ Test 
+        * 1. Analiza Wrażliwości Promienia (Radius vs Accuracy)
+        * Cel: Udowodnienie istnienia "Sweet Spotu" i wykazanie przewagi V2 (Adaptive).
+        * Parametry: Promień od 0.05 do 1.5 (krok 0.1). Stała liczba detektorów.
+        */
+        public static void RadiusSensitivityAnalysis(List<Antigen> trainSet, List<Antigen> testSet, int featuresCount, int detCount = 5000)
+        {
+            string filePath = "Wykres1_Analiza_Promienia.csv";
+            bool fileExists = File.Exists(filePath);
+
+            Console.WriteLine("\n==============================================");
+            Console.WriteLine($"[Radius Analysis] Start testu wrażliwości (Cel: {detCount} detektorów)");
+            Console.WriteLine("==============================================\n");
+
+            using (StreamWriter sw = new StreamWriter(filePath, append: true))
+            {
+                if (!fileExists)
+                {
+                    // Dodana kolumna "DetectorsGenerated", by udowodnić, że V0/V1 "duszą się" przy dużych promieniach!
+                    sw.WriteLine("Version,Radius,DetectorsGenerated,TP,FP,Accuracy");
+                    fileExists = true;
+                }
+
+                // Badamy pełne spektrum promieni: od mikroskopijnych (0.05) po gigantyczne (1.5)
+                for (float r = 0.05f; r <= 1.55f; r += 0.1f)
+                {
+                    float radius = (float)Math.Round(r, 2); // Zaokrąglamy, by uniknąć krzaków typu 0.15000001
+                    Console.WriteLine($"\n--- Testowanie promienia bazowego: {radius:F2} ---");
+
+                    // ==========================================
+                    // TEST V0: Ślepe Losowanie (Sztywny Promień)
+                    // ==========================================
+                    Console.WriteLine("-> Generowanie V0...");
+                    NegativeSelection nsaV0 = new NegativeSelection();
+                    var detV0 = nsaV0.GenerateDetectors_v0(trainSet, featuresCount - 1, detCount, radius);
+                    var evalV0 = new ModelEvaluator().Evaluate(detV0, testSet);
+
+                    sw.WriteLine($"V0_Uniform,{radius.ToString(CultureInfo.InvariantCulture)},{detV0.Count},{evalV0.TP},{evalV0.FP},{evalV0.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                    // ==========================================
+                    // TEST V1: Profilowanie Grawitacyjne (Sztywny Promień)
+                    // ==========================================
+                    Console.WriteLine("-> Generowanie V1...");
+                    NegativeSelection nsaV1 = new NegativeSelection();
+                    var detV1 = nsaV1.GenerateDetectors_v1(trainSet, featuresCount - 1, detCount, radius);
+                    var evalV1 = new ModelEvaluator().Evaluate(detV1, testSet);
+
+                    sw.WriteLine($"V1_Gravity,{radius.ToString(CultureInfo.InvariantCulture)},{detV1.Count},{evalV1.TP},{evalV1.FP},{evalV1.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                    // ==========================================
+                    // TEST V2: Adaptive V-Detector (Min Promień)
+                    // ==========================================
+                    Console.WriteLine("-> Generowanie V2...");
+                    NegativeSelection nsaV2 = new NegativeSelection();
+                    var detV2 = nsaV2.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, radius);
+                    var evalV2 = new ModelEvaluator().Evaluate(detV2, testSet);
+
+                    sw.WriteLine($"V2_Adaptive,{radius.ToString(CultureInfo.InvariantCulture)},{detV2.Count},{evalV2.TP},{evalV2.FP},{evalV2.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                    sw.Flush(); // Zapisujemy na bieżąco, żeby nie stracić danych w razie przerwania!
+                }
+            }
+
+            Console.WriteLine($"\n[Radius Analysis] Zakończono z sukcesem! Plik gotowy do wykresu: {filePath}");
+        }
+
+        //OLD
 
         /*@ Test 
-         * 
-         2. Krzywa Uczenia (Wpływ rozmiaru populacji detektorów)
-         * parametry: 
-         *  - Liczba wygenerowanych detektorow (np. 1k, 5k, 10k, 20k)
-         *  - Oś Y1: Accuracy ; Oś Y2: Wykryte Ataki (TP)
-         * 
-         * */
+      * 
+      2. Krzywa Uczenia (Wpływ rozmiaru populacji detektorów)
+      * parametry: 
+      *  - Liczba wygenerowanych detektorow (np. 1k, 5k, 10k, 20k)
+      *  - Oś Y1: Accuracy ; Oś Y2: Wykryte Ataki (TP)
+      * 
+      * */
         public static void LCurve(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
         {
             string filePath = "Wykres2_Krzywa_Uczenia.csv";
@@ -78,7 +205,7 @@ namespace AisIntrusionDetection.Interop
 
             foreach (int detCount in sizesToTest)
             {
-                
+
                 NegativeSelection nsa = new NegativeSelection();
 
                 // Uczymy
@@ -105,99 +232,7 @@ namespace AisIntrusionDetection.Interop
                 }
             }
         }
-       
 
-       
-         /*
-         3.Analiza progu czułości V-Detectora(Kompromis TP vs FP)
-         * parametry: 
-         *  - targetRadius, 
-         *  - Liczba pakietów(Jedna linia dla TP, druga dla FP)
-         */
-        public static void SensitivityThresholdAnalysis(EvaluationMetrics metrics, List<Antigen> trainSet, List<Antigen> testSet, int featuresCount)
-        {
-            string filePath = "Wykres3.1_Analiza_Progu.csv";
-            int[] sizesToTest = {500, 1000 ,12000,15000 };// 3.0 version only one size of dect geroup
-            // 1. DYNAMICZNE SONDOWANIE rozstawu pakietow (promienie)
-            NegativeSelection nsaProbe = new NegativeSelection();
-            float robustMaxRadius = nsaProbe.CalculateRobustMaxRadius(trainSet, featuresCount - 1, 2000, false);
-
-            //zaczynamy od mozliwie najwiekszej wartosci aby od razu ustalic jaki musi byc wsp zmniejsznia promienia (globalScaleFactor)
-            float[] radiusSize = {
-            robustMaxRadius * 1.00f,
-            robustMaxRadius * 0.75f,
-            robustMaxRadius * 0.50f,
-            robustMaxRadius * 0.1f,
-            robustMaxRadius * 0.05f,
-            robustMaxRadius * 0.025f,
-            robustMaxRadius * 0.01f
-             };
-
-
-            bool fileExists = File.Exists(filePath);
-
-            float globalScaleFactor = 1.0f;
-            foreach (int detCount in sizesToTest)
-            {
-               
-                foreach (float targetRadius in radiusSize)
-                {
-                    List<Detector> detectors = new List<Detector>();
-                    NegativeSelection nsa = new NegativeSelection();
-
-                    float currentRadius = targetRadius * globalScaleFactor;
-                   
-
-                   
-                    //  pętla Fallback 
-                    while (true)
-                    {
-                       
-                        nsa = new NegativeSelection(); // Tworzymy nowy obiekt, żeby zresetować liczniki prób
-                        detectors = nsa.GenerateDetectors_v2(trainSet, featuresCount - 1, detCount, currentRadius);
-
-                        // Sprawdzamy, czy algorytm dostarczył pełną armię
-                        if (detectors.Count >= detCount)
-                        {
-                            break; // Sukces! Wychodzimy z pętli Fallback i idziemy testować
-                        }
-                        else
-                        {
-                            // Feedback z NSA: Przestrzeń była za ciasna.
-                            Console.WriteLine($"\n[Adaptacja] Promień {currentRadius:F4} jest fizycznie za duży dla {detCount} detektorów!");
-
-                            // Zmniejszamy wymagania o 5%  => tzreba przeskalowac cala tablcie radius!
-                            globalScaleFactor *= 0.90f;
-                            // Wyliczamy nowy promień na podstawie pomniejszonej skali
-                            currentRadius = targetRadius * globalScaleFactor;
-
-                            Console.WriteLine($"[Adaptacja] Zmniejszam promień o {100-globalScaleFactor}% -> Nowy cel: {currentRadius:F4}. Próbuję ponownie...");
-                        }
-                    }
-
-                    // Kiedy w końcu się uda, testujemy i zapisujemy wynik
-                    ModelEvaluator evaluator = new ModelEvaluator();
-                    metrics = evaluator.Evaluate(detectors, testSet);
-
-
-
-                    // Używamy StreamWriter w bloku using (automatycznie zamyka plik)
-                    using (StreamWriter sw = new StreamWriter(filePath, append: true))
-                    {
-                        // Jeśli plik jest nowy, dodaj nagłówki kolumn
-                        if (!fileExists)
-                        {
-                            sw.WriteLine("DetectorsCount,MinRadius,Attempts,TP,FP,Accuracy");
-                            fileExists = true;
-                        }
-
-                        string line = $"{detCount},{currentRadius.ToString(CultureInfo.InvariantCulture)}," +
-                                    $"{nsa.attempts},{metrics.TP},{metrics.FP},{metrics.Accuracy.ToString(CultureInfo.InvariantCulture)}";
-                        sw.WriteLine(line);
-                    }
-                }
-            }
-        }
 
         /*@ Test
          4. Rozkład Przestrzenny Detektorów (Histogram Promieni)
@@ -208,7 +243,7 @@ namespace AisIntrusionDetection.Interop
         public static void RadiusHist(List<Antigen> trainSet, int featuresCount)
         {
             string filePath = "Wykres4_Histogram.csv";
-            int[] sizesToTest = { 1000, 5000, 10000, 20000 };
+            int[] sizesToTest = { 1000, 5000, 10000, 20000 }; //BIERZEMY DET SIZE NA PODSTAWIE WYKRESU 0 -> Detector Count vs Accuracy 
             bool fileExists = File.Exists(filePath);
 
             foreach (int detCount in sizesToTest)
