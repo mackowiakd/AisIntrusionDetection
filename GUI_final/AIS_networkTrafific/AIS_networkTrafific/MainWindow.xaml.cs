@@ -131,5 +131,85 @@ namespace AIS_networkTrafific
             BtnRunV2.IsEnabled = true;
             TxtStatusBar.Text = "Gotowy.";
         }
+
+        // ==========================================
+        // 5. ZASTOSOWANIE PCA
+        // ==========================================
+        private async void BtnApplyPca_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
+
+            try
+            {
+                int dimensions = int.Parse(TxtPcaDim.Text);
+
+                BtnApplyPca.IsEnabled = false;
+                TxtPcaStatus.Text = "Przetwarzanie PCA...";
+                TxtPcaStatus.Foreground = Brushes.Orange;
+
+                // PCA może chwilę potrwać dla dużej ilości danych, więc też wrzucamy w Task
+                await Task.Run(() => _engine.RunPcaTransformation(dimensions));
+
+                TxtPcaStatus.Text = $"Gotowe ({dimensions}D)";
+                TxtPcaStatus.Foreground = Brushes.Green;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Błąd podczas PCA: " + ex.Message);
+                TxtPcaStatus.Text = "Błąd";
+                TxtPcaStatus.Foreground = Brushes.Red;
+            }
+            finally
+            {
+                BtnApplyPca.IsEnabled = true;
+            }
+        }
+
+        // ==========================================
+        // 6. OBSŁUGA V2 (Gravity) PO PCA
+        // ==========================================
+        private async void BtnRunV2Pca_Click(object sender, RoutedEventArgs e)
+        {
+            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0) { MessageBox.Show("Najpierw zastosuj PCA!"); return; }
+
+            int count = int.Parse(TxtCountV2Pca.Text);
+            float minRadius = float.Parse(TxtRadiusMinV2Pca.Text, CultureInfo.InvariantCulture);
+
+            BtnRunV2Pca.IsEnabled = false;
+            TxtStatusBar.Text = $"Uruchamiam V2 w przestrzeni PCA ({count} detektorów)...";
+
+            // Zwróć uwagę na argument usePca: true
+            var results = await Task.Run(() => _engine.RunV2(count, minRadius, usePca: true));
+
+            ResV2Pca_TP.Text = results.TP.ToString();
+            ResV2Pca_FP.Text = results.FP.ToString();
+            ResV2Pca_Acc.Text = $"{results.Accuracy:F2}%";
+
+            BtnRunV2Pca.IsEnabled = true;
+            TxtStatusBar.Text = "Gotowy.";
+        }
+
+        // ==========================================
+        // 7. OBSŁUGA V3 (Uniform) PO PCA - ZWYCIĘZCA
+        // ==========================================
+        private async void BtnRunV3Pca_Click(object sender, RoutedEventArgs e)
+        {
+            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0) { MessageBox.Show("Najpierw zastosuj PCA!"); return; }
+
+            int count = int.Parse(TxtCountV3Pca.Text);
+            float minRadius = float.Parse(TxtRadiusMinV3Pca.Text, CultureInfo.InvariantCulture);
+
+            BtnRunV3Pca.IsEnabled = false;
+            TxtStatusBar.Text = $"Uruchamiam V3 w przestrzeni PCA ({count} detektorów)...";
+
+            var results = await Task.Run(() => _engine.RunV3Pca(count, minRadius));
+
+            ResV3Pca_TP.Text = results.TP.ToString();
+            ResV3Pca_FP.Text = results.FP.ToString();
+            ResV3Pca_Acc.Text = $"{results.Accuracy:F2}%";
+
+            BtnRunV3Pca.IsEnabled = true;
+            TxtStatusBar.Text = "Gotowy.";
+        }
     }
 }
