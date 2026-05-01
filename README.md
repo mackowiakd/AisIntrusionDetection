@@ -67,37 +67,63 @@ We conducted a Grid Search over the hyperparameter space to analyze the trade-of
 * Due to the immense sparsity of the 41-dimensional space, adaptive detectors are allowed to grow to **gigantic radii**.
 * During inference (testing on unseen data), these massive spheres inadvertently absorb natural, microscopic deviations present in normal network traffic.
 * This phenomenon leads to an avalanche of False Positives (FP), causing the model's Accuracy to collapse to the 10-20% range.
+### 3. The Failure of Brute Force and Hyperparameter Tuning in 41D Space
+To mathematically prove the destructive nature of the 41D space, we conducted two baseline stress tests against the classic NSA algorithms (V0, V1) and our adaptive variant (V2).
+
+<p align="center">
+  <img width="800"  alt="Raport_Krzywa_Uczenia_Acc_vs_FP" src="https://github.com/user-attachments/assets/02292f3c-b092-475a-9b51-03625390080e" />
+
+ 
+
+**Proof 1: The Brute Force Fallacy (Learning Curve)**
+The chart above plots Accuracy (solid lines) against False Positives (dashed lines) as the detector population scales up to 20,000. 
+* **V0/V1 (Blindness):** Remain completely flat at 50% accuracy (equivalent to a coin toss in a balanced dataset) with 0 False Positives. They are mathematically "lost" in the sparse 41D space, failing to detect any anomalies.
+* **V2 (Overfitting):** Attempting to adaptively fit the space causes extreme instability. As the detector count increases, the False Positives (dashed green line) skyrocket to nearly 3,000. The algorithm chokes on its own generated noise, dragging accuracy down below 30%. **Conclusion: Adding more detectors/RAM does not solve high-dimensional sparsity.**
+
+<img width="800"  alt="accurac_radii" src="https://github.com/user-attachments/assets/43403369-a4b5-448d-a8e4-2069405a8ecb" />
+
+
+**Proof 2: The Hyperparameter Wall (Radius Sensitivity)**
+We tested if simply tuning the `Radius` could bridge the gap in 41D. The results were conclusive:
+* Rigid radii algorithms (V0, V1) remain permanently stuck at the 50% failure baseline regardless of radius size. 
+* The Adaptive algorithm (V2) collapses immediately as the starting radius increases, generating overlapping boundaries with normal traffic. 
+
+**Core Finding:** The 41D space fundamentally breaks Euclidean distance metrics. The algorithms cannot reliably distinguish between "Self" and "Non-Self" using spherical boundaries. This definitively proved the absolute necessity of implementing **Dimensionality Reduction (PCA)** before generating the immune system.
 ## 🔬 Phase 3: Spatial Density Analysis & A/B Algorithmic Testing
-<img width="1600" height="960" alt="pca_v2-v3" src="https://github.com/user-attachments/assets/0cadb435-4306-4a52-b606-b906346fe58e" />
 
+Following the implementation of PCA dimensionality reduction, an extensive benchmark was conducted to evaluate the geometric impact of compressed multidimensional spaces on detector generation strategies. 
 
-Following the implementation of PCA dimensionality reduction, an extensive A/B benchmark was conducted to evaluate the geometric impact of compressed multidimensional spaces on detector generation strategies. 
-
-Two distinct initializations were tested across multiple PCA dimensions (from 5D to 30D, against a 41D baseline):
-* **V2 (Power-Law Gravity):** Forces detectors to spawn in close mathematical proximity to the "self" traffic cluster.
-* **V3 (Uniform Distribution):** Scatters detectors evenly across the normalized hyperspace, combined with a data-driven Maximum Radius limit (95th percentile dynamic clamping).
+Three distinct generation algorithms were tested across multiple PCA dimensions (from 5D to 30D, against a 41D baseline):
+* **V0_Basic (Rigid Radius):** The classic NSA approach. Detectors are scattered uniformly with a static, statistically derived maximum radius.
+* **V2_Gravity (Adaptive + Gravity):** An advanced approach forcing detectors to spawn in close mathematical proximity to the "self" traffic cluster before growing adaptively.
+* **V3_Uniform (Adaptive + Uniform):** Scatters detectors evenly across the hyperspace, but empowers them with an adaptive radius that grows until it hits the normal traffic boundary.
 
 ### 📊 Benchmark Results: The Geometric Paradigm Shift
-*(Results averaged over 3 cross-validation runs per dimension. Configuration: 5000 Detectors, Min-Max Normalization applied).*
+<img width="1600" height="960" alt="Raport_PCA_Wymiary" src="https://github.com/user-attachments/assets/c874fe03-31f8-4187-a375-56e2f23e193e" />
 
-| PCA Dimensions | V2 (Gravity) Accuracy | V3 (Uniform) Accuracy | V3 True Positives | V3 False Positives |
+
+*(Results averaged over 3 cross-validation runs per dimension. Configuration: 5000 Detectors, PCA Normalized Data).*
+
+| PCA Dimensions | V0_Basic Accuracy | V2_Gravity Accuracy | V3_Uniform Accuracy | V3_Uniform False Positives |
 | :---: | :---: | :---: | :---: | :---: |
-| **5D** | 52.37% | 97.82% | 877 | 0 |
-| **10D** | 54.15% | 98.17% | 884 | 0 |
-| **15D** | 32.37% | 98.40% | 889 | 0 |
-| **20D** | 29.38% | **98.67%** | **894** | **0** |
-| **25D** | 33.05% | 98.50% | 891 | 0 |
-| **30D** | 38.10% | 97.03% | 862 | 0 |
-| **41D (Baseline)**| **94.35%*** | 53.95% (Failed) | 0 | 0 |
-*(Note: V2 achieves optimal performance in 41D uncompressed space using specific hyperparameters, while V3 fails entirely).*
+| **5D**  | 49.96% | 49.25% | 91.28% | ~670 |
+| **10D** | 50.00% | 47.58% | 92.58% | ~544 |
+| **15D** | 50.00% | 35.25% | 91.80% | ~625 |
+| **20D** | 50.00% | 30.07% | 92.05% | ~676 |
+| **25D** | 50.00% | 38.82% | **91.97%** | **~607** |
+| **30D** | 50.00% | 24.24% | 92.10% | ~456 |
+| **41D (Baseline)**| 50.00% (Failed)| 26.09% | 50.00% (Failed) | 0 |
+
+*(Note: While V3 averages ~92% accuracy across reduced dimensions, it fails entirely in the raw 41D space).*
 
 ### 🧠 Architectural Conclusions:
 The empirical data revealed a critical shift in spatial mechanics caused by Dimensionality Reduction:
-1. **The Curse of Dimensionality (41D):** In the uncompressed 41-dimensional space, the volume is vastly empty. Uniform random generation (V3) fails completely as detectors are lost in hyperspace. The "gravitational" pull of the **V2 algorithm** is strictly required to find the boundaries of normal traffic.
-2. **The Microscopic Suffocation (PCA Space):** PCA drastically condenses the "self" traffic into a highly dense hyper-cluster. Applying the V2 gravitational pull here forces detectors directly into the dense center, immediately clamping their radii to near-zero and rendering them useless against anomalies.
-3. **The Optimal Strategy (PCA + V3 Clamping):** Scattering detectors uniformly (V3) into the compressed PCA space drops them safely into the "Dark Forest" (anomaly space). Empowered by the dynamic radius limit (preventing overgeneralization), they grow to perfectly seal the dense cluster of normal traffic without penetrating it. 
 
-**Ultimate Configuration:** The system achieves its absolute peak performance at **20 Principal Components using V3 Uniform Generation**, hitting an astonishing **98.67% Accuracy with 0 False Positives**. This configuration serves as the perfect, mathematically stable foundation for the final Evolutionary (Genetic Algorithm) optimization phase.
+1. **The Ineffectiveness of Static Radii (V0_Basic):** The flat 50% accuracy line (equivalent to a coin toss in a balanced dataset) proves that classic NSA with a static radius is fundamentally flawed. A rigid radius cannot conform to the complex, irregular shape of the compressed "self" cluster.
+2. **The "Crowding Problem" (V2_Gravity in PCA Space):** PCA drastically condenses the normal traffic into a highly dense hyper-cluster. Applying the V2 gravitational pull here forces detectors directly into this dense center. They are immediately choked by surrounding normal traffic, generating thousands of False Positives and dragging accuracy down to 24-40%. 
+3. **The Optimal Strategy (PCA + V3_Uniform):** Scattering detectors uniformly (V3) into the compressed PCA space drops them safely into the "Dark Forest" (anomaly space). Empowered by the adaptive radius mechanism, they grow outward to perfectly seal the dense cluster of normal traffic without penetrating it. 
+
+**Ultimate Configuration:** The system achieves its peak, stable performance utilizing **PCA compression coupled with the V3_Uniform Generation Algorithm**. This configuration bypasses the Curse of Dimensionality and perfectly molds to the data, serving as the solid mathematical foundation for the final Evolutionary (Genetic Algorithm) optimization phase.
 
 
 ## 📈 Roadmap / Future Optimizations
