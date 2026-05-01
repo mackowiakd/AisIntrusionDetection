@@ -54,7 +54,7 @@ namespace AisIntrusionDetection.Models
 
             // 2. Clamping maxRadius to space capacity
             Console.WriteLine("[NSA] Skanowanie gęstości przestrzeni w poszukiwaniu optymalnego limitu promienia...");
-            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, requiredDetectors, isPcaSpace: true);
+            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, numberOfFeatures, requiredDetectors);
 
             Console.WriteLine($"[NSA] Generowanie {requiredDetectors} det. (Promień >= {minAllowedRadius:F4})...");
 
@@ -303,7 +303,7 @@ namespace AisIntrusionDetection.Models
             int maxConsecutiveFails = 10000;
 
             // WYWOŁUJEMY NASZ RADAR Z FLAGĄ PCA = TRUE!
-            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, compressedFeatures, requiredDetectors, isPcaSpace: true);
+            float dynamicMaxRadius = CalculateRobustMaxRadius(selfSet, compressedFeatures, requiredDetectors);
 
             Console.WriteLine($"[NSA-PCA] Generowanie {requiredDetectors} det. (Promień MIN: {minAllowedRadius:F4} | MAX: {dynamicMaxRadius:F4})");
 
@@ -367,7 +367,7 @@ namespace AisIntrusionDetection.Models
          */
         // Dodaj to wewnątrz klasy NegativeSelection
         // sampleSize domyślnie 0 oznacza, że algorytm sam dobierze odpowiednią próbę!
-        public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int expectedDetectors, bool isPcaSpace)
+        public float CalculateRobustMaxRadius(List<Antigen> selfSet, int numberOfFeatures, int expectedDetectors)
         {
 
             // Dynamiczna wielkość próby do zbadania gęstości lasu
