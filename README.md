@@ -26,6 +26,21 @@ This project goes beyond simple scripting by implementing a highly optimized, hy
 * **C# / .NET 8** (Core Logic, Multithreading, Memory Management)
 * **C++** (High-speed flat file parsing, DLL Export)
 * **Visual Studio** (Native C++ & Managed C# debugging)
+* 
+## 🚀 Key Engineering Features
+
+* **Hybrid Architecture (C# & C++ Interop):** Uses `P/Invoke` to bridge a custom C++ DLL (responsible for parsing and normalizing massive datasets) with a C# engine.
+* **V-Detector Algorithm (Dynamic Radius):** Implemented an advanced version of NSA where detector radii adaptively grow based on Euclidean distance to the nearest 'Self' (normal traffic) node.
+* **Adaptive Data Profiling:** Eliminates the "Empty Space Problem" in high-dimensional spaces (41 features) by dynamically calculating power distributions to spawn detectors near actual data clusters.
+* **High-Performance Multithreading:** Utilizes `Parallel.ForEach` across available CPU cores with the **Double-Checked Locking** pattern to ensure thread-safe, lock-optimized distance calculations.
+* **Memory Management:** Flat array memory allocation in C# passed directly via pointers to C++ to prevent Garbage Collector overhead during large dataset loading.
+
+## 🏗️ System Architecture
+
+<img height="500"  alt="WPF User Interface Data Flow" src="https://github.com/user-attachments/assets/da11ac80-9fd8-4dca-b948-79dc274dbe61" />
+
+
+
 
 ## 🏃‍♂️ How to Run the Project
 
@@ -47,7 +62,7 @@ This project goes beyond simple scripting by implementing a highly optimized, hy
 
 - [x] Adaptive space profiling for detector generation.
 - [x] V-Detector implementation (Dynamic Radius).
-- [ ] **Dimensionality Reduction (PCA):** Reduce the 41-dimensional space to mitigate the Curse of Dimensionality.
+- [x] **Dimensionality Reduction (PCA):** Reduce the 41-dimensional space to mitigate the Curse of Dimensionality.
 - [ ] **Genetic Algorithm:** Replace random detector generation with crossover and mutation for optimal space coverage.
 - [ ] 
 ## 📊 Experimental Results & Findings: The Curse of Dimensionality
@@ -124,6 +139,11 @@ The empirical data revealed a critical shift in spatial mechanics caused by Dime
 3. **The Optimal Strategy (PCA + V3_Uniform):** Scattering detectors uniformly (V3) into the compressed PCA space drops them safely into the "Dark Forest" (anomaly space). Empowered by the adaptive radius mechanism, they grow outward to perfectly seal the dense cluster of normal traffic without penetrating it. 
 
 **Ultimate Configuration:** The system achieves its peak, stable performance utilizing **PCA compression coupled with the V3_Uniform Generation Algorithm**. This configuration bypasses the Curse of Dimensionality and perfectly molds to the data, serving as the solid mathematical foundation for the final Evolutionary (Genetic Algorithm) optimization phase.
+
+## 📸 Application Showcase
+<img width="800" alt="Zrzut ekranu 2026-05-12 153813" src="https://github.com/user-attachments/assets/2f58ad4c-341b-4cf6-b2b3-db29abc33eb8" />
+
+<img width="800" alt="Zrzut ekranu 2026-05-12 155729" src="https://github.com/user-attachments/assets/e4284bba-33fd-4ccf-8a00-48c9862f531b" />
 
 
 ## 📈 Roadmap / Future Optimizations
