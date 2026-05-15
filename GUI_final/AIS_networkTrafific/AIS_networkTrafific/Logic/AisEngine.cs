@@ -44,7 +44,7 @@ namespace AIS_networkTrafific.UI.Logic
 
         // Metoda ładująca dane - wywoływana raz przy starcie lub po wyborze pliku
 
-        public void LoadData(string filePath, int requestedTrainSize, int requestedTestSize)
+        public void LoadData(string filePath, ref int requestedTrainSize, int requestedTestSize)
         {
             int originalTrainCount = 25192;
             if (!File.Exists(filePath)) throw new FileNotFoundException($"Nie znaleziono pliku: {filePath}");
@@ -84,7 +84,7 @@ namespace AIS_networkTrafific.UI.Logic
 
             // HACK: Jeśli trainSize wynosi -1, bierzemy absolutnie wszystko!
             int actualTrainSize = requestedTrainSize == -1 ? normalTrainData.Count : requestedTrainSize;
-
+            requestedTrainSize = actualTrainSize; //updating in GUI
             if (normalTrainData.Count < actualTrainSize)
                 throw new Exception($"Za mało zdrowego ruchu. Chcesz {actualTrainSize}, a jest {normalTrainData.Count}.");
 
