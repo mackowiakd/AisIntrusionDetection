@@ -44,36 +44,58 @@ namespace AIS_networkTrafific.UI.Logic
 
         // Metoda ładująca dane - wywoływana raz przy starcie lub po wyborze pliku
 
-        public void LoadData(string filePath, int maxRowsToLoad = 20000, int trainSize = 5000, int testSize = 10000)
+        public void LoadData(string filePath, int requestedTrainSize, int requestedTestSize)
         {
+            int originalTrainCount = 25192;
             if (!File.Exists(filePath)) throw new FileNotFoundException($"Nie znaleziono pliku: {filePath}");
 
             // 1. Zliczamy wymiary z nagłówka
             OriginalFeatureCount = DetectFeatureCount(filePath);
 
             // 2. Ładujemy dane przez C++
-            var loader = new DataLoader(filePath, maxRowsToLoad, OriginalFeatureCount);
+            // 100 000 to bezpieczny, wbudowany limit wewnętrzny silnika dla C++, 
+            // aby wciągnął cały sklejony plik bez zająknięcia.
+            var loader = new DataLoader(filePath, 100000, OriginalFeatureCount);
             var allData = loader.LoadData();
 
             if (allData == null || allData.Count == 0)
                 throw new Exception("Z biblioteki C++ wróciło 0 rekordów. Upewnij się, że TrafficParser.dll jest w folderze!");
 
-            var allNormal = allData.Where(a => a.Attack == false).ToList();
-            var allAttacks = allData.Where(a => a.Attack == true).ToList();
+            // ==========================================
+            // ETAP 1: TWARDY PODZIAŁ (Kategoryczny zakaz tasowania!)
+            // ==========================================
+            // Odcinamy to, co było starym plikiem TRAIN
+            var rawTrainData = allData.Take(originalTrainCount).ToList();
 
-            if (allNormal.Count < trainSize)
-                throw new Exception($"Za mało zdrowego ruchu w pliku. Chcesz {trainSize}, a jest {allNormal.Count}.");
+            // Reszta to nasz wklejony plik KDDTest+
+            var rawTestData = allData.Skip(originalTrainCount).ToList();
 
-            FullTrainSet = allNormal.Take(trainSize).ToList();
+            Random rng = new Random(42); // Stałe ziarno dla powtarzalności
 
-            var unseenNormal = allNormal.Skip(trainSize).ToList();
-            var mixedTestSet = new List<Antigen>();
-            mixedTestSet.AddRange(unseenNormal);
-            mixedTestSet.AddRange(allAttacks);
+            // ==========================================
+            // ETAP 2: PRZYGOTOWANIE TRENINGU (Tylko z rawTrainData!)
+            // ==========================================
+            // Z oryginalnego zbioru treningowego wyciągamy TYLKO zdrowy ruch.
+            // Tutaj TASUJEMY, żeby algorytm dostał dobry przekrój do zbudowania PCA.
+            var normalTrainData = rawTrainData
+                .Where(a => a.Attack == false)
+                .OrderBy(x => rng.Next())
+                .ToList();
 
-            if (mixedTestSet.Count < testSize) testSize = mixedTestSet.Count; // Zabezpieczenie
+            // HACK: Jeśli trainSize wynosi -1, bierzemy absolutnie wszystko!
+            int actualTrainSize = requestedTrainSize == -1 ? normalTrainData.Count : requestedTrainSize;
 
-            FullTestSet = mixedTestSet.Take(testSize).ToList();
+            if (normalTrainData.Count < actualTrainSize)
+                throw new Exception($"Za mało zdrowego ruchu. Chcesz {actualTrainSize}, a jest {normalTrainData.Count}.");
+
+            FullTrainSet = normalTrainData.Take(actualTrainSize).ToList();
+
+
+            // ==========================================
+            // ETAP 3: PRZYGOTOWANIE TESTU 
+            // ==========================================
+            // Tasujemy cały zbiór testowy, by ataki i zdrowy ruch leciały naprzemiennie
+            FullTestSet = rawTestData.OrderBy(x => rng.Next()).ToList();
         }
 
         // Metoda wykonująca PCA na danych - wywoływana po załadowaniu danych i przed uruchomieniem algorytmów

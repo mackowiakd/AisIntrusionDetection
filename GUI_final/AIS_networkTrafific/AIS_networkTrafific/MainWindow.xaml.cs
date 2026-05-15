@@ -45,7 +45,7 @@ namespace AIS_networkTrafific
                 TxtGlobalStatus.Foreground = Brushes.Orange;
 
                 // Przekazujemy dynamiczną ścieżkę do pliku!
-                _engine.LoadData(filePath, 20000, trainSize, testSize);
+                _engine.LoadData(filePath, trainSize, testSize);
 
                 TxtGlobalStatus.Text = $"Wczytano [{_engine.OriginalFeatureCount} cech] | Train: {trainSize}, Test: {testSize}";
                 TxtGlobalStatus.Foreground = Brushes.Green;
