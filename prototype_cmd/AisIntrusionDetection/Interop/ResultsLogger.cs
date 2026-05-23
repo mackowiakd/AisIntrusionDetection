@@ -308,6 +308,99 @@ namespace AisIntrusionDetection.Interop
             Console.WriteLine("\n[PCA Benchmark] Zakończono! Zapisano dane do: " + filePath);
         }
 
+        public static void PcaRadi_detCount(List<Antigen> rawTrainSet, List<Antigen> rawTestSet)
+        {
+            string filePath = "PCA_radiDetCountTesting.csv";
+            bool fileExists = File.Exists(filePath);
+
+            int runs = 3;
+            int[] detCount = { 5000, 10000, 15000 };
+            float[] radii = { 0.05f, 0.10f, 0.20f };
+            int dim = 20; // Stały wymiar PCA do testów tarczy
+
+            using (StreamWriter sw = new StreamWriter(filePath, append: true))
+            {
+                if (!fileExists)
+                {
+                    // POPRAWKA: Dodane kolumny DetectorCount oraz MinRadius do nagłówka
+                    sw.WriteLine("Dimensions,Version,DetectorCount,MinRadius,RunID,Attempts,TP,FP,TN,FN,Accuracy");
+                    fileExists = true;
+                }
+
+             
+                
+                var pca = new PcaTransformer();
+                pca.Fit(rawTrainSet, dim);
+                var compressedTrain = pca.Transform(rawTrainSet);
+                var compressedTest = pca.Transform(rawTestSet);
+                pca.NormalizePcaDataTo01(compressedTrain, compressedTest, dim);
+
+                for (int r = 1; r <= runs; r++)
+                {
+                    foreach (int det in detCount)
+                    {
+                        Console.WriteLine($"\n--- Przebieg: {r}/{runs} dla {dim}D ---");
+                        foreach (float radius in radii)
+                        {
+                            string radiusStr = radius.ToString("F2", CultureInfo.InvariantCulture);
+                            Console.WriteLine($"\n--- Parametry: Promień min = {radiusStr}, Detektory = {det} ---");
+
+                            // ==========================================
+                            // TEST 0: V0 (Basic - promień statyczny)
+                            // ==========================================
+                            NegativeSelection nsaV0 = new NegativeSelection();
+                            Console.WriteLine("-> Start V0 (Basic)...");
+                            // POPRAWKA: Przekazujemy zmienną 'radius' z pętli, zamiast minRadius!
+                            List<Detector> detectorsV0 = nsaV0.GenerateDetectors_v0(compressedTrain, dim, det, radius);
+                            ModelEvaluator evalV0 = new ModelEvaluator();
+                            var metricsV0 = evalV0.Evaluate(detectorsV0, compressedTest);
+
+                            // POPRAWKA: Zapisujemy dane łącznie z det i radiusStr
+                            sw.WriteLine($"{dim},V0_Basic,{det},{radiusStr},{r},{nsaV0.attempts},{metricsV0.TP},{metricsV0.FP},{metricsV0.TN},{metricsV0.FN},{metricsV0.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                            // ==========================================
+                            // TEST 1: V3 (Uniform - dynamiczny promień)
+                            // ==========================================
+                            NegativeSelection nsaV3 = new NegativeSelection();
+                            Console.WriteLine("-> Start V3 (Uniform)...");
+                            // POPRAWKA: Przekazujemy zmienną 'radius' z pętli!
+                            List<Detector> detectorsV3 = nsaV3.GenerateDetectors_V3pca(compressedTrain, dim, det, radius);
+                            ModelEvaluator evalV3 = new ModelEvaluator();
+                            var metricsV3 = evalV3.Evaluate(detectorsV3, compressedTest);
+
+                            sw.WriteLine($"{dim},V3_Uniform,{det},{radiusStr},{r},{nsaV3.attempts},{metricsV3.TP},{metricsV3.FP},{metricsV3.TN},{metricsV3.FN},{metricsV3.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                            // ==========================================
+                            // TEST 2: V2 (Gravity - oryginalny)
+                            // ==========================================
+                            NegativeSelection nsaV2 = new NegativeSelection();
+                            Console.WriteLine("-> Start V2 (Gravity)...");
+                            List<Detector> detectorsV2 = nsaV2.GenerateDetectors_v2(compressedTrain, dim, det, radius);
+                            ModelEvaluator evalV2 = new ModelEvaluator();
+                            var metricsV2 = evalV2.Evaluate(detectorsV2, compressedTest);
+
+                            sw.WriteLine($"{dim},V2_Gravity,{det},{radiusStr},{r},{nsaV2.attempts},{metricsV2.TP},{metricsV2.FP},{metricsV2.TN},{metricsV2.FN},{metricsV2.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                            // ==========================================
+                            // TEST 3: V1 (Gravity + Dynamic Radius)
+                            // ==========================================
+                            NegativeSelection nsaV1 = new NegativeSelection();
+                            Console.WriteLine("-> Start V1 (Gravity, Dynamic Radius)...");
+                            List<Detector> detectorsV1 = nsaV1.GenerateDetectors_v1(compressedTrain, dim, det, radius);
+                            ModelEvaluator evalV1 = new ModelEvaluator();
+                            var metricsV1 = evalV1.Evaluate(detectorsV1, compressedTest);
+
+                            sw.WriteLine($"{dim},V1_Gravity_Dynamic,{det},{radiusStr},{r},{nsaV1.attempts},{metricsV1.TP},{metricsV1.FP},{metricsV1.TN},{metricsV1.FN},{metricsV1.Accuracy.ToString(CultureInfo.InvariantCulture)}");
+
+                            // Wymuszamy natychmiastowy zapis na dysk, żeby nie stracić danych w razie awarii
+                            sw.Flush();
+                        }
+                    }
+                }
+            }
+            Console.WriteLine("\n[PCA Benchmark] Zakończono! Zapisano dane do: " + filePath);
+        }
+
         // OPTIONAL //
 
         /* @ Test

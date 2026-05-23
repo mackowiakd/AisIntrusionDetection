@@ -19,7 +19,7 @@ namespace AisIntrusionDetection.Interop
 
 #else
         // Ścieżki dla trybu RELEASE (obok siebie z plikiem .exe)
-        private const string CppPath = "TrafficParserCpp.dll"
+        private const string CppPath = "TrafficParser.dll";
        
 #endif
 

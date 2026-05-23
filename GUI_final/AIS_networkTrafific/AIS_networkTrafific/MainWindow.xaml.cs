@@ -58,81 +58,6 @@ namespace AIS_networkTrafific
             }
         }
         // ==========================================
-        // 2. OBSŁUGA V0 (Ślepe Losowanie)
-        // ==========================================
-        private async void BtnRunV0_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
-
-            // 1. Czytamy z GUI parametry
-            int count = int.Parse(TxtCountV0.Text);
-            float radius = float.Parse(TxtRadiusV0.Text, CultureInfo.InvariantCulture);
-
-            BtnRunV0.IsEnabled = false;
-            TxtStatusBar.Text = $"Uruchamiam V0 (Detektory: {count}, Promień: {radius})...";
-
-            // 2. Liczymy w tle!
-            var results = await Task.Run(() => _engine.RunV0(radius, count));
-
-            // 3. Wypisujemy wyniki z powrotem do GUI
-            ResV0_TP.Text = results.TP.ToString();
-            ResV0_FP.Text = results.FP.ToString();
-            ResV0_Acc.Text = $"{results.Accuracy:F2}%";
-
-            BtnRunV0.IsEnabled = true;
-            TxtStatusBar.Text = "Gotowy.";
-        }
-
-        // ==========================================
-        // 3. OBSŁUGA V1 (Profilowanie / Grawitacja)
-        // ==========================================
-        private async void BtnRunV1_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
-
-            int count = int.Parse(TxtCountV1.Text);
-            float radius = float.Parse(TxtRadiusV1.Text, CultureInfo.InvariantCulture);
-
-            BtnRunV1.IsEnabled = false;
-            TxtStatusBar.Text = $"Uruchamiam V1 (Detektory: {count}, Promień: {radius})...";
-
-            var results = await Task.Run(() => _engine.RunV1(radius, count));
-
-            ResV1_TP.Text = results.TP.ToString();
-            ResV1_FP.Text = results.FP.ToString();
-            ResV1_Acc.Text = $"{results.Accuracy:F2}%";
-
-            BtnRunV1.IsEnabled = true;
-            TxtStatusBar.Text = "Gotowy.";
-        }
-
-        // ==========================================
-        // 4. OBSŁUGA V2 (Adaptive - Twój mistrz dla 41D)
-        // ==========================================
-        private async void BtnRunV2_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_engine.IsDataLoaded) { MessageBox.Show("Najpierw wczytaj dane!"); return; }
-
-            int count = int.Parse(TxtCountV2.Text);
-            float minRadius = float.Parse(TxtRadiusMinV2.Text, CultureInfo.InvariantCulture);
-
-            BtnRunV2.IsEnabled = false;
-            TxtStatusBar.Text = $"Uruchamiam V2 Adaptive (Detektory: {count}, Min Radius: {minRadius})...";
-
-            var results = await Task.Run(() => _engine.RunV2(count, minRadius, usePca: false));
-
-            ResV2_TP.Text = results.TP.ToString();
-            ResV2_FP.Text = results.FP.ToString();
-            ResV2_Acc.Text = $"{results.Accuracy:F2}%";
-
-            // To na dole można wyciągnąć, jeśli Twój ModelEvaluator zacząłby zwracać np. MaxRadius
-            ResV2_MaxRad.Text = "Automatyczny";
-
-            BtnRunV2.IsEnabled = true;
-            TxtStatusBar.Text = "Gotowy.";
-        }
-
-        // ==========================================
         // 5. ZASTOSOWANIE PCA
         // ==========================================
         private async void BtnApplyPca_Click(object sender, RoutedEventArgs e)
@@ -165,20 +90,52 @@ namespace AIS_networkTrafific
             }
         }
 
+
         // ==========================================
-        // 6. OBSŁUGA V2 (Gravity) PO PCA
+        // 2. OBSŁUGA METODY V0 (BASIC STATIC PCA)
+        // ==========================================
+        private async void BtnRunV0Pca_Click(object sender, RoutedEventArgs e)
+        {
+            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0)
+            {
+                MessageBox.Show("Wykonaj najpierw procedurę dopasowania i transformacji PCA!");
+                return;
+            }
+
+            int count = int.Parse(TxtCountV0Pca.Text);
+            float radius = float.Parse(TxtRadiusV0Pca.Text, CultureInfo.InvariantCulture);
+
+            BtnRunV0Pca.IsEnabled = false;
+            TxtStatusBar.Text = "Obliczanie tarczy detektorów V0 Basic w przestrzeni PCA...";
+
+            // Wywołanie asynchroniczne silnika z flagą aktywującą podstawowy algorytm losowy
+            var results = await Task.Run(() => _engine.RunV0(radius, count, usePca:true));
+
+            ResV0Pca_TP.Text = results.TP.ToString();
+            ResV0Pca_FP.Text = results.FP.ToString();
+            ResV0Pca_Acc.Text = $"{results.Accuracy:F2}%";
+
+            BtnRunV0Pca.IsEnabled = true;
+            TxtStatusBar.Text = "Ewaluacja V0 ukończona.";
+        }
+
+        // ==========================================
+        // 3. OBSŁUGA METODY V2 (GRAVITY STATIC PCA)
         // ==========================================
         private async void BtnRunV2Pca_Click(object sender, RoutedEventArgs e)
         {
-            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0) { MessageBox.Show("Najpierw zastosuj PCA!"); return; }
+            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0)
+            {
+                MessageBox.Show("Wykonaj najpierw procedurę dopasowania i transformacji PCA!");
+                return;
+            }
 
             int count = int.Parse(TxtCountV2Pca.Text);
             float minRadius = float.Parse(TxtRadiusMinV2Pca.Text, CultureInfo.InvariantCulture);
 
             BtnRunV2Pca.IsEnabled = false;
-            TxtStatusBar.Text = $"Uruchamiam V2 w przestrzeni PCA ({count} detektorów)...";
+            TxtStatusBar.Text = "Uruchamianie heurystyki przyciągania grawitacyjnego V2...";
 
-            // Zwróć uwagę na argument usePca: true
             var results = await Task.Run(() => _engine.RunV2(count, minRadius, usePca: true));
 
             ResV2Pca_TP.Text = results.TP.ToString();
@@ -186,21 +143,25 @@ namespace AIS_networkTrafific
             ResV2Pca_Acc.Text = $"{results.Accuracy:F2}%";
 
             BtnRunV2Pca.IsEnabled = true;
-            TxtStatusBar.Text = "Gotowy.";
+            TxtStatusBar.Text = "Ewaluacja V2 ukończona.";
         }
 
         // ==========================================
-        // 7. OBSŁUGA V3 (Uniform) PO PCA - ZWYCIĘZCA
+        // 4. OBSŁUGA METODY V3 (UNIFORM ADAPTIVE PCA)
         // ==========================================
         private async void BtnRunV3Pca_Click(object sender, RoutedEventArgs e)
         {
-            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0) { MessageBox.Show("Najpierw zastosuj PCA!"); return; }
+            if (_engine.PcaTrainSet == null || _engine.PcaTrainSet.Count == 0)
+            {
+                MessageBox.Show("Wykonaj najpierw procedurę dopasowania i transformacji PCA!");
+                return;
+            }
 
             int count = int.Parse(TxtCountV3Pca.Text);
             float minRadius = float.Parse(TxtRadiusMinV3Pca.Text, CultureInfo.InvariantCulture);
 
             BtnRunV3Pca.IsEnabled = false;
-            TxtStatusBar.Text = $"Uruchamiam V3 w przestrzeni PCA ({count} detektorów)...";
+            TxtStatusBar.Text = "Generowanie optymalnej powłoki detektorów adaptacyjnych V3...";
 
             var results = await Task.Run(() => _engine.RunV3Pca(count, minRadius));
 
@@ -209,7 +170,7 @@ namespace AIS_networkTrafific
             ResV3Pca_Acc.Text = $"{results.Accuracy:F2}%";
 
             BtnRunV3Pca.IsEnabled = true;
-            TxtStatusBar.Text = "Gotowy.";
+            TxtStatusBar.Text = "Ewaluacja V3 ukończona. Wynik gotowy do prezentacji.";
         }
     }
 }

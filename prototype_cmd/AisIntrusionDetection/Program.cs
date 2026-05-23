@@ -11,43 +11,54 @@ namespace AisIntrusionDetection
         static void Main()
         {
             //string path= Directory.GetCurrentDirectory(); + filename - na przylosz sciezka wzgledna
-            string dataFilePath = @"C:\Users\Dominika\source\repos\JA\AisIntrusionDetection\prototype_cmd\KDDTrain+_20Percent.arff"; // Ścieżka do pliku z danymi
-            int maxRowsToLoad = 20000; // Maksymalna liczba wierszy do załadowania
-            int trainSetSize = 5000;
-            int testSetSize = 5000;
+            string dataFilePath = @"C:\Users\Dominika\source\repos\JA\AisIntrusionDetection\prototype_cmd\KDD_Combined.arff"; // Ścieżka do pliku z danymi
 
-            int featuresCount = 42; // Liczba cech (kolumn) do załadowania
-            int detectorsToGenerate = 5000; // Liczba detektorów do wygenerowania
-            float detectorRadius = 0.1f; // Promień detektora (próg dopasowania)
-            float pcaRadius = 0.05f; // Promień detektora po redukcji PCA (może być mniejszy, bo dane są skompresowane)
-            int dimPca = 20; // Docelowa liczba wymiarów po PCA
-            // 1. Wczytujemy WSZYSTKO przez  Parser C++
-            DataLoader loader = new DataLoader(dataFilePath,maxRowsToLoad, featuresCount);
-            Console.WriteLine("\n[DEBUG] Cechy pierwszego pakietu:");
-           
-            List<Antigen> allData = loader.LoadData();
-            var firstPacketFeatures = allData[0].Data.Select(f => f.ToString("F4"));
-            Console.WriteLine(string.Join(", ", firstPacketFeatures) + "\n");
+            int originalTrainCount = 25192;
+            if (!File.Exists(dataFilePath)) throw new FileNotFoundException($"Nie znaleziono pliku: {dataFilePath}");
 
-            // 2. PODZIAŁ DANYCH (np. 80% do nauki, 20% do testów)
-            // ->1. Dzielimy surowe dane na dwa koszyki
-            var allNormal = allData.Where(a => a.Attack == false).ToList();
-            var allAttacks = allData.Where(a => a.Attack == true).ToList();
 
-            // 2. ZBIÓR TRENINGOWY: Uczymy system TYLKO na zdrowym ruchu (np. pierwsze 5000)
-            List<Antigen> trainSet = allNormal.Take(trainSetSize).ToList();
 
-            // 3. ZBIÓR TESTOWY: Mieszamy niewidziany zdrowy ruch z atakami
-            // List<Antigen> testSet = new List<Antigen>();
+            // List<Antigen> FullTrainSet = normalTrainData.Take(originalTrainCount).ToList(); tu byl blad chcialam 25tys normal data, a train set mial OGÓLEM 25 tys (w tym ataki!!)
 
-            // Bierzemy kolejne 5000 zdrowych pakietów (Skip omija te, które poszły do treningu!)
-            List<Antigen> testSet = allNormal.Skip(trainSetSize).Take(testSetSize).ToList();
 
-            // Dorzucamy 5000 ataków
-            testSet.AddRange(allAttacks.Take(5000));
+            var loader = new DataLoader(dataFilePath, 100000, 41);
+            var allData = loader.LoadData();
 
-            Console.WriteLine($"Wczytano {allData.Count} pakietów. Z tego {trainSet.Count} to ruch prawidłowy (Self).");
+            if (allData == null || allData.Count == 0)
+                throw new Exception("Z biblioteki C++ wróciło 0 rekordów.");
 
+            // ==========================================
+            // ETAP 1: TWARDY PODZIAŁ KAGGLE (Kategoryczny zakaz tasowania przed podziałem!)
+            // ==========================================
+            var rawTrainData = allData.Take(originalTrainCount).ToList();
+            var rawTestData = allData.Skip(originalTrainCount).ToList();
+
+            Random rng = new Random(42);
+
+            // ==========================================
+            // ETAP 2: PRZYGOTOWANIE TRENINGU (Tylko zdrowy ruch)
+            // ==========================================
+            var normalTrainData = rawTrainData
+                .Where(a => a.Attack == false)
+                .OrderBy(x => rng.Next())
+                .ToList();
+
+            int maxHealthy = normalTrainData.Count -500; // To wyniesie około 13449
+
+            // Zabezpieczenie: bierzemy tyle ile chce GUI, ale nie więcej niż fizycznie mamy
+            
+            List <Antigen> FullTrainSet = normalTrainData.Take(maxHealthy).ToList();
+
+            // ==========================================
+            // ETAP 3: PRZYGOTOWANIE TESTU (Zdrowe + Ataki Zero-Day)
+            // ==========================================
+            int maxTest = rawTestData.Count; // To wyniesie około 22544
+
+            // Zabezpieczenie: bierzemy tyle ile chce GUI, ale nie więcej niż plik Test+
+          
+            List<Antigen> FullTestSet = rawTestData.OrderBy(x => rng.Next()).Take(maxTest-1000).ToList();
+
+            ResultsLogger.PcaRadi_detCount(FullTrainSet, FullTestSet);
             /*
             
 
@@ -85,6 +96,7 @@ namespace AisIntrusionDetection
 
 
 
+
             */
 
 
@@ -93,13 +105,13 @@ namespace AisIntrusionDetection
             // 5. LOGOWANIE WYNIKÓW DO  WYKRESÓW
             // Uruchomienie ostatecznego benchmarku na surowych danych
 
-            Console.WriteLine("\nGenerowanie danych do Wykresu PCA Benchmark Analysis...\n");
-            ResultsLogger.PcaBenchmarkAnalysis(trainSet, testSet);
-            //Console.WriteLine("\nGenerowanie danych do Wykresu 0...\n");
-            //ResultsLogger.LearningCurve(trainSet, testSet, featuresCount);
-            int detCountv0 = 5000;
-            int detCountv1 = 2500;
-            int detCountv2 = 1000;
+            //Console.WriteLine("\nGenerowanie danych do Wykresu PCA Benchmark Analysis...\n");
+            //ResultsLogger.PcaBenchmarkAnalysis(trainSet, testSet);
+            ////Console.WriteLine("\nGenerowanie danych do Wykresu 0...\n");
+            ////ResultsLogger.LearningCurve(trainSet, testSet, featuresCount);
+            //int detCountv0 = 5000;
+            //int detCountv1 = 2500;
+            //int detCountv2 = 1000;
             //Console.WriteLine("\nGenerowanie danych do Wykresu zestawienia v0 -v2...\n");
             //ResultsLogger.RunFullBenchmark(trainSet, testSet, featuresCount);
 

@@ -116,19 +116,18 @@ namespace AIS_networkTrafific.UI.Logic
 
         // --- Metody do obsługi Algorytmów ---
 
-        public EvaluationMetrics RunV0(float radius, int count)
+        public EvaluationMetrics RunV0(float radius, int count, bool usePca)
         {
             var nsa = new NegativeSelection();
-            var detectors = nsa.GenerateDetectors_v0(FullTrainSet, OriginalFeatureCount-1, count, radius);
-            return new ModelEvaluator().Evaluate(detectors, FullTestSet);
+            var train = usePca ? PcaTrainSet : FullTrainSet;
+            var test = usePca ? PcaTestSet : FullTestSet;
+            var dim = usePca ? CurrentPcaDimensions : OriginalFeatureCount - 1;
+
+            var detectors = nsa.GenerateDetectors_v0(train, dim, count, radius);
+            return new ModelEvaluator().Evaluate(detectors, test);
         }
 
-        public EvaluationMetrics RunV1(float radius, int count)
-        {
-            var nsa = new NegativeSelection();
-            var detectors = nsa.GenerateDetectors_v1(FullTrainSet, OriginalFeatureCount-1  , count, radius);
-            return new ModelEvaluator().Evaluate(detectors, FullTestSet);
-        }
+      
 
         public EvaluationMetrics RunV2(int count, float minRadius, bool usePca)
         {

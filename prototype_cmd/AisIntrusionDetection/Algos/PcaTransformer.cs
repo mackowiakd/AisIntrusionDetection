@@ -21,32 +21,37 @@ namespace AisIntrusionDetection.Algos
         public void Fit(List<Antigen> trainingData, int targetDim)
         {
             _targetDimensions = targetDim;
-            int numSamples = trainingData.Count;
-            int numFeatures = trainingData[0].Data.Length;
 
-            // 1. Inicjalizacja macierzy DANYCH (X) oraz wektora ŚREDNICH
-            // MathNet potrafi stworzyć macierz podając mu wprost, jak ma wyciągnąć floaty z Antigen!
-            var matrixX = DenseMatrix.Create(numSamples, numFeatures, (i, j) => trainingData[i].Data[j]);
+            // ZABEZPIECZENIE WYDAJNOŚCIOWE: 
+            // Do wyliczenia macierzy Kowariancji nie potrzebujemy 50 tysięcy rekordów.
+            // 3000 to aż nadto do znalezienia idealnych osi PCA na 41 wymiarach.
+            int maxSamplesForFit = 3000;
 
-            // Inicjalizacja pustego wektora MathNet:
+            // Jeśli mamy więcej niż limit, bierzemy losową próbkę (ze stałym ziarnem, żeby testy były powtarzalne!)
+            var sampleData = trainingData.Count > maxSamplesForFit
+                ? trainingData.OrderBy(x => new Random(42).Next()).Take(maxSamplesForFit).ToList()
+                : trainingData;
+
+            int numSamples = sampleData.Count;
+            int numFeatures = sampleData[0].Data.Length;
+
+            // 1. Inicjalizacja macierzy DANYCH na podstawie próbki
+            var matrixX = DenseMatrix.Create(numSamples, numFeatures, (i, j) => sampleData[i].Data[j]);
             _meanVector = Vector<double>.Build.Dense(numFeatures, 0.0);
 
             // 2. Centrowanie (Elegancki sposób MathNet)
-            // Zamiast ręcznych pętli, możemy wyciągać całe kolumny i liczyć ich średnią:
             for (int j = 0; j < numFeatures; j++)
             {
                 _meanVector[j] = matrixX.Column(j).Average();
             }
 
-            // Odejmujemy średnią od każdego wiersza macierzy
             var centeredMatrix = DenseMatrix.Create(numSamples, numFeatures, 0.0);
             for (int i = 0; i < numSamples; i++)
             {
                 centeredMatrix.SetRow(i, matrixX.Row(i) - _meanVector);
             }
 
-            // 3. Macierz Kowariancji
-            // Twój kod był tu IDEALNY. TransposeThisAndMultiply to X^T * X
+            // 3. Macierz Kowariancji (Teraz wykona się błyskawicznie, bo max to 3000 wierszy!)
             var covarianceMatrix = centeredMatrix.TransposeThisAndMultiply(centeredMatrix) / (numSamples - 1);
 
             // 4. Dekompozycja EVD
@@ -55,14 +60,12 @@ namespace AisIntrusionDetection.Algos
             var eigenVectors = evd.EigenVectors;
 
             // 5. Sortowanie i Tworzenie Macierzy W
-            // Ten kod LINQ napisałaś rewelacyjnie!
             var sortedIndices = eigenValues.Select((value, index) => new { Value = value, Index = index })
                                            .OrderByDescending(x => x.Value.Real)
                                            .Take(targetDim)
                                            .Select(x => x.Index)
                                            .ToArray();
 
-            // Budujemy ostateczną macierz projekcji
             _projectionMatrix = DenseMatrix.Build.DenseOfColumns(sortedIndices.Select(i => eigenVectors.Column(i)).ToArray());
         }
         /*metoda  przyje dane wejściowe (zbiór 41-wymiarowy) i zwraca dane wyjściowe (zbiór zredukowany).*/
