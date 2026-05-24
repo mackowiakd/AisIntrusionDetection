@@ -126,10 +126,7 @@ The V3_Uniform algorithm, combined with PCA, successfully solved the detection p
   * **The Outcome:** The goal of the GA is *not* to radically improve accuracy (as V3 is already highly effective), but to achieve the same 98% coverage using a fraction of the detectors (e.g., 500 instead of 5000). Evolving a leaner, smarter immune shield will drastically reduce CPU cycles during live traffic inference, transitioning the project from a highly accurate prototype to a production-ready, high-performance engine.
 
 ## 📸 Application Showcase
-<img width="800" alt="Zrzut ekranu 2026-05-12 153813" src="https://github.com/user-attachments/assets/2f58ad4c-341b-4cf6-b2b3-db29abc33eb8" />
-
-<img width="800" alt="Zrzut ekranu 2026-05-12 155729" src="https://github.com/user-attachments/assets/e4284bba-33fd-4ccf-8a00-48c9862f531b" />
-
+<img width="800" alt="Zrzut ekranu 2026-05-24 111639" src="https://github.com/user-attachments/assets/d09be2b8-8930-4617-bb39-0f738f14a1f8" />
 
 ## 🛠️ Tech Stack
 
