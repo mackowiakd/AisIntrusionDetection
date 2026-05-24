@@ -21,6 +21,116 @@ This project goes beyond simple scripting by implementing a highly optimized, hy
 2.  **Training (C#):** The algorithm learns the "Self" (normal network behavior) and generates a resilient army of V-Detectors in a 41-dimensional space. Any detector overlapping with normal traffic is destroyed.
 3.  **Evaluation (C#):** The system evaluates testing data. If a network packet falls within the radius of any surviving detector, it is flagged as an anomaly/attack.
 
+## 📊 Experimental Results & Findings: The Curse of Dimensionality
+
+In the initial phase of the project, the V-Detector algorithm was tested in the original, unreduced 41-dimensional space. We applied an innovative adaptive radius mechanism alongside power-law probability distribution profiling. The results provided hard empirical evidence of the destructive impact that the **Curse of Dimensionality** has on spherical anomaly detectors.
+
+### The Failure of Brute Force and Hyperparameter Tuning in 41D Space
+To mathematically prove the destructive nature of the 41D space, we conducted two baseline stress tests against the classic NSA algorithms (V0, V1) and our adaptive variant (V2).
+
+<p align="center">
+  <img width="800"  alt="Raport_Krzywa_Uczenia_Acc_vs_FP" src="https://github.com/user-attachments/assets/02292f3c-b092-475a-9b51-03625390080e" />
+
+**Proof 1: The Brute Force Fallacy (Learning Curve)**
+The chart above plots Accuracy (solid lines) against False Positives (dashed lines) as the detector population scales up to 20,000. 
+* **V0/V1 (Blindness):** Remain completely flat at 50% accuracy (equivalent to a coin toss in a balanced dataset) with 0 False Positives. They are mathematically "lost" in the sparse 41D space, failing to detect any anomalies.
+* **V2 (Overfitting):** Attempting to adaptively fit the space causes extreme instability. As the detector count increases, the False Positives (dashed green line) skyrocket to nearly 3,000. The algorithm chokes on its own generated noise, dragging accuracy down below 30%. **Conclusion: Adding more detectors/RAM does not solve high-dimensional sparsity.**
+ 
+
+**Core Finding:** The 41D space fundamentally breaks Euclidean distance metrics. The algorithms cannot reliably distinguish between "Self" and "Non-Self" using spherical boundaries. This definitively proved the absolute necessity of implementing **Dimensionality Reduction (PCA)** before generating the immune system.
+
+## 🔬  Algorithmic Testing: Zero-Day Attack Evaluation & The Accuracy Paradox
+
+Following the implementation of PCA dimensionality reduction, an extensive benchmark was conducted to evaluate the geometric impact of compressed multidimensional spaces on detector generation strategies.
+To rigorously test our algorithms, we evaluated them on the official, dedicated Kaggle `KDDTest+` dataset. This set intentionally includes **Zero-Day attacks** (novel attack vectors not present in the training data) and has a highly imbalanced class distribution (approx. 17,500 Normal packets vs. 4,000 Attacks).
+
+Three distinct generation algorithms were tested across multiple PCA dimensions (from 5D to 30D, against a 41D baseline):
+* **V0_Basic (Rigid Radius):** The classic NSA approach. Detectors are scattered uniformly with a static, statistically derived maximum radius.
+* **V2_Gravity (Adaptive + Gravity):** An advanced approach forcing detectors to spawn in close mathematical proximity to the "self" traffic cluster before growing adaptively.
+* **V3_Uniform (Adaptive + Uniform):** Scatters detectors evenly across the hyperspace, but empowers them with an adaptive radius that grows until it hits the normal traffic boundary.
+
+### 📊 Benchmark Results: The Geometric Paradigm Shift
+<img width="1600" height="960" alt="Raport_PCA_Wymiary" src="https://github.com/user-attachments/assets/c874fe03-31f8-4187-a375-56e2f23e193e" />
+
+
+*(Results averaged over 3 evaluation runs on the KDDTest+ dataset. Parameters: 20D PCA, 5000 Detectors).*
+| Generation Strategy | Raw Accuracy | True Positive Rate (Recall) | Attacks Caught (TP) | False Positives (FP) |
+| :--- | :---: | :---: | :---: | :---: |
+| **V0_Basic** *(Static Radius)* | 81.39% ⚠️ | **0.00%** | 0 / 4009 | 0 |
+| **V2_Gravity** *(Adaptive Pull)* | 79.08% | **1.31%** | ~53 / 4009 | ~549 |
+| **V3_Uniform** *(Adaptive Shield)* | 80.00% | **97.32% 🏆** | **~3902 / 4009** | ~4200 |
+
+
+
+### 🧠 Architectural Conclusions & The Accuracy Paradox
+
+Testing on the imbalanced Zero-Day dataset exposed a classic Machine Learning trap and proved the absolute superiority of the V3 architecture:
+
+1. **The Accuracy Paradox (V0 & V1 Failure):** If you look purely at the "Raw Accuracy" column, V0_Basic seems to be the winner with 81.39%. However, this is a dangerous statistical illusion. Because of the static radius parameters, V0 and V1 completely failed to cover the anomaly space. They defaulted to predicting *every single packet* as normal traffic. Since 81.39% of the test set *was* normal traffic, the math checks out, but their **True Positive Rate (TPR) is 0%**. They missed every single cyberattack.
+   
+2. **The Gravity Collapse (V2):** As predicted by our spatial analysis, V2_Gravity caught a dismal 1.3% of the attacks. Dragging detectors into the intertwined center of the dataset proves entirely ineffective against novel, outward-lying Zero-Day threats.
+
+3. **The Ultimate Winner (V3_Uniform):** Our V3 Adaptive Shield algorithm effectively solved the problem. By scattering detectors uniformly and dynamically expanding them to the edges of the "Self" cluster, V3 successfully intercepted **97.32% of all Zero-Day attacks** (~3902 out of 4009). While this aggressive shielding naturally blocks some normal traffic (resulting in a higher False Positive rate and a nominal Accuracy of 80%), its unparalleled Recall makes it the only mathematically viable architecture for a real-world Immune NIDS.
+
+### 🎛️ Hyperparameter Grid Search (V3_Uniform)
+
+To ensure peak performance for the Live Demo, we executed an automated parameter sweep across the V3 algorithm. 
+
+<p align="center">
+  <img width="800" alt="Code_Generated_Image (1)" src="https://github.com/user-attachments/assets/64f43f6f-376e-4278-ad6c-edcaaf235cbe" />
+</p>
+
+The tuning revealed that scaling the detector count beyond **5000** begins to yield diminishing returns. A highly dense shield (e.g., 15,000 detectors) forces elements into microscopic crevices between normal traffic and anomalies, causing a spike in False Positives without a meaningful increase in Attack detection. Thus, a lean, 5000-detector configuration at a 0.10 minimum radius was established as the optimal balance for inference speed and security.
+
+
+
+### 🔬 Deep Dive: Algorithmic Post-Mortem & Spatial Mechanics
+
+To truly understand why the algorithms performed the way they did, we must look at the raw structure of the NSL-KDD dataset and how our detectors interact with it.
+
+#### 1. The Dynamic Radius Solution ($r_{max} = dist_{min}$)
+Why did V0_Basic fail even after PCA? It relied on a **Static Radius**. In complex, irregular data spaces, a fixed-size sphere either overlaps with normal traffic (causing False Positives) or leaves massive gaps for attacks to slip through.
+
+Our V3_Uniform algorithm solved this using a **Dynamic/Adaptive Radius**. The algorithm spawns a detector and dynamically inflates it until it perfectly touches the nearest "Self" (healthy) network packet. This allows the system to build a watertight, custom-fitted shield around the irregular boundaries of normal traffic.
+
+| Static Radius | Adaptive Radius |
+| :---: | :---: |
+| <img src="https://github.com/user-attachments/assets/72e5bd3e-7bda-48c6-8f16-aac96c7de2b7" alt="Static Radius" width="100%"> | <img  src="https://github.com/user-attachments/assets/e16275a7-1224-4443-93de-b9016ef31ade" alt="Adaptive Radius" width="100%"> |
+
+
+#### 2. Why the V2 "Gravity" Heuristic Failed
+Initially, the V2 Gravity algorithm was our theoretical favorite. Its logic was to gravitationally pull detectors toward the densest centers of the "Self" data to build a tight perimeter. However, it failed catastrophically (dropping to coin-toss accuracy). Why?
+
+<p align="center">
+<img width="750" alt="kaggle_dataset" src="https://github.com/user-attachments/assets/728d58b1-fb5b-4258-9ac2-d49ace53306c" />
+</p>
+
+A 3D projection of our dataset (above) reveals the harsh reality of real-world network traffic: **The classes are highly intertwined.** Malicious traffic (anomalies) heavily overlaps with normal traffic. 
+
+<p align="center">
+ <img width="745" alt="v2 gravity" src="https://github.com/user-attachments/assets/af4c55c2-f561-4f39-b787-79ac0b69cd77" />
+</p>
+
+* **The Conceptual Flaw:** Gravity would only work in an ideal scenario where normal traffic forms perfectly isolated "islands" (Right Panel). Because our real-world dataset overlaps (Left Panel), the Gravity heuristic actively dragged perfect detectors straight into the chaotic center. This forced massive collisions with healthy packets, leading to an unacceptable False Positive rate. 
+* **The Takeaway:** For highly overlapped datasets, attempting to penetrate the cluster is a mathematical flaw. The V3 Uniform approach succeeded because it builds a protective shield on the *outside* of the cluster instead.
+
+## 📈 Roadmap & Future Optimizations
+
+The V3_Uniform algorithm, combined with PCA, successfully solved the detection problem, achieving high accuracy and neutralizing Zero-Day attacks. However, the next phase of development focuses on **Production-Level Performance and Real-Time Inference Speed**.
+
+- [x] Adaptive space profiling for detector generation.
+- [x] V-Detector implementation (Dynamic Radius calculating Euclidean distance).
+- [x] **Dimensionality Reduction (PCA):** Compressing 41-dimensional space to mitigate the Curse of Dimensionality and restore distance metric reliability.
+- [ ] **Genetic Algorithm (GA) Optimization for Inference Speed:** * **The Goal:** Currently, V3 uses random uniform spawning (brute force), which requires generating thousands of overlapping detectors (e.g., 5000+) to secure the perimeter. While highly accurate, evaluating every live network packet against 5000 detectors is computationally expensive for real-time IDS.
+  * **The Implementation:** We propose replacing the random spawning phase with a Genetic Algorithm. By evaluating a detector's "Fitness" based on its maximum non-overlapping volume ($r_{max}$), we can evolve a mathematically optimal set of detectors.
+  * **The Outcome:** The goal of the GA is *not* to radically improve accuracy (as V3 is already highly effective), but to achieve the same 98% coverage using a fraction of the detectors (e.g., 500 instead of 5000). Evolving a leaner, smarter immune shield will drastically reduce CPU cycles during live traffic inference, transitioning the project from a highly accurate prototype to a production-ready, high-performance engine.
+
+## 📸 Application Showcase
+<img width="800" alt="Zrzut ekranu 2026-05-12 153813" src="https://github.com/user-attachments/assets/2f58ad4c-341b-4cf6-b2b3-db29abc33eb8" />
+
+<img width="800" alt="Zrzut ekranu 2026-05-12 155729" src="https://github.com/user-attachments/assets/e4284bba-33fd-4ccf-8a00-48c9862f531b" />
+
+
 ## 🛠️ Tech Stack
 
 * **C# / .NET 8** (Core Logic, Multithreading, Memory Management)
@@ -39,9 +149,6 @@ This project goes beyond simple scripting by implementing a highly optimized, hy
 
 <img height="500"  alt="WPF User Interface Data Flow" src="https://github.com/user-attachments/assets/da11ac80-9fd8-4dca-b948-79dc274dbe61" />
 
-
-
-
 ## 🏃‍♂️ How to Run the Project
 
 1.  **Clone the repository:**
@@ -57,100 +164,6 @@ This project goes beyond simple scripting by implementing a highly optimized, hy
     * Right-click the `TrafficParser` project and select **Build** (Ensure you are on the `x64` architecture).
 4.  **Run the C# Project:**
     * Set `AisIntrusionDetection` as the Startup Project and hit `Start`.
-
-## 📈 Roadmap / Future Optimizations
-
-- [x] Adaptive space profiling for detector generation.
-- [x] V-Detector implementation (Dynamic Radius).
-- [x] **Dimensionality Reduction (PCA):** Reduce the 41-dimensional space to mitigate the Curse of Dimensionality.
-- [ ] **Genetic Algorithm:** Replace random detector generation with crossover and mutation for optimal space coverage.
-- [ ] 
-## 📊 Experimental Results & Findings: The Curse of Dimensionality
-
-In the initial phase of the project, the V-Detector algorithm was tested in the original, unreduced 41-dimensional space. We applied an innovative adaptive radius mechanism alongside power-law probability distribution profiling. The results provided hard empirical evidence of the destructive impact that the **Curse of Dimensionality** has on spherical anomaly detectors.
-
-### 1. Evolutionary Cost and Spatial Complexity
-<img width="3000" height="1800" alt="Wykres1_KosztEwolucyjny" src="https://github.com/user-attachments/assets/6457e985-2c41-4e74-a8cf-37c3dc1c9a61" />
-
-The chart above demonstrates the sheer difficulty of finding free space (valid gaps for detectors) in 41 dimensions. While the naive version (V.0) accepted coordinates randomly, our optimized algorithm (V.1) had to actively reject hundreds of thousands of candidates before successfully fitting detectors precisely to the boundaries of normal ("self") traffic.
-
-### 2. Overgeneralization of Spherical Detectors
-<img width="3600" height="2400" alt="Wykres3_Powierzchnia_3D" src="https://github.com/user-attachments/assets/b47e6b97-0b2d-4bf9-b4e3-5142c5de2967" />
-<img width="3000" height="1800" alt="Wykres3 0_AnalizaProgu" src="https://github.com/user-attachments/assets/e54dcc1d-c421-4362-99fd-fc158fda96fa" />
-
-We conducted a Grid Search over the hyperparameter space to analyze the trade-off between the True Positive (TP) rate and False Positives (FP). The 3D Fitness Landscape and heatmaps revealed a critical mathematical barrier:
-* Due to the immense sparsity of the 41-dimensional space, adaptive detectors are allowed to grow to **gigantic radii**.
-* During inference (testing on unseen data), these massive spheres inadvertently absorb natural, microscopic deviations present in normal network traffic.
-* This phenomenon leads to an avalanche of False Positives (FP), causing the model's Accuracy to collapse to the 10-20% range.
-### 3. The Failure of Brute Force and Hyperparameter Tuning in 41D Space
-To mathematically prove the destructive nature of the 41D space, we conducted two baseline stress tests against the classic NSA algorithms (V0, V1) and our adaptive variant (V2).
-
-<p align="center">
-  <img width="800"  alt="Raport_Krzywa_Uczenia_Acc_vs_FP" src="https://github.com/user-attachments/assets/02292f3c-b092-475a-9b51-03625390080e" />
-
- 
-
-**Proof 1: The Brute Force Fallacy (Learning Curve)**
-The chart above plots Accuracy (solid lines) against False Positives (dashed lines) as the detector population scales up to 20,000. 
-* **V0/V1 (Blindness):** Remain completely flat at 50% accuracy (equivalent to a coin toss in a balanced dataset) with 0 False Positives. They are mathematically "lost" in the sparse 41D space, failing to detect any anomalies.
-* **V2 (Overfitting):** Attempting to adaptively fit the space causes extreme instability. As the detector count increases, the False Positives (dashed green line) skyrocket to nearly 3,000. The algorithm chokes on its own generated noise, dragging accuracy down below 30%. **Conclusion: Adding more detectors/RAM does not solve high-dimensional sparsity.**
-
-<img width="800"  alt="accurac_radii" src="https://github.com/user-attachments/assets/43403369-a4b5-448d-a8e4-2069405a8ecb" />
-
-
-**Proof 2: The Hyperparameter Wall (Radius Sensitivity)**
-We tested if simply tuning the `Radius` could bridge the gap in 41D. The results were conclusive:
-* Rigid radii algorithms (V0, V1) remain permanently stuck at the 50% failure baseline regardless of radius size. 
-* The Adaptive algorithm (V2) collapses immediately as the starting radius increases, generating overlapping boundaries with normal traffic. 
-
-**Core Finding:** The 41D space fundamentally breaks Euclidean distance metrics. The algorithms cannot reliably distinguish between "Self" and "Non-Self" using spherical boundaries. This definitively proved the absolute necessity of implementing **Dimensionality Reduction (PCA)** before generating the immune system.
-## 🔬 Phase 3: Spatial Density Analysis & A/B Algorithmic Testing
-
-Following the implementation of PCA dimensionality reduction, an extensive benchmark was conducted to evaluate the geometric impact of compressed multidimensional spaces on detector generation strategies. 
-
-Three distinct generation algorithms were tested across multiple PCA dimensions (from 5D to 30D, against a 41D baseline):
-* **V0_Basic (Rigid Radius):** The classic NSA approach. Detectors are scattered uniformly with a static, statistically derived maximum radius.
-* **V2_Gravity (Adaptive + Gravity):** An advanced approach forcing detectors to spawn in close mathematical proximity to the "self" traffic cluster before growing adaptively.
-* **V3_Uniform (Adaptive + Uniform):** Scatters detectors evenly across the hyperspace, but empowers them with an adaptive radius that grows until it hits the normal traffic boundary.
-
-### 📊 Benchmark Results: The Geometric Paradigm Shift
-<img width="1600" height="960" alt="Raport_PCA_Wymiary" src="https://github.com/user-attachments/assets/c874fe03-31f8-4187-a375-56e2f23e193e" />
-
-
-*(Results averaged over 3 cross-validation runs per dimension. Configuration: 5000 Detectors, PCA Normalized Data).*
-
-| PCA Dimensions | V0_Basic Accuracy | V2_Gravity Accuracy | V3_Uniform Accuracy | V3_Uniform False Positives |
-| :---: | :---: | :---: | :---: | :---: |
-| **5D**  | 49.96% | 49.25% | 91.28% | ~670 |
-| **10D** | 50.00% | 47.58% | 92.58% | ~544 |
-| **15D** | 50.00% | 35.25% | 91.80% | ~625 |
-| **20D** | 50.00% | 30.07% | 92.05% | ~676 |
-| **25D** | 50.00% | 38.82% | **91.97%** | **~607** |
-| **30D** | 50.00% | 24.24% | 92.10% | ~456 |
-| **41D (Baseline)**| 50.00% (Failed)| 26.09% | 50.00% (Failed) | 0 |
-
-*(Note: While V3 averages ~92% accuracy across reduced dimensions, it fails entirely in the raw 41D space).*
-
-### 🧠 Architectural Conclusions:
-The empirical data revealed a critical shift in spatial mechanics caused by Dimensionality Reduction:
-
-1. **The Ineffectiveness of Static Radii (V0_Basic):** The flat 50% accuracy line (equivalent to a coin toss in a balanced dataset) proves that classic NSA with a static radius is fundamentally flawed. A rigid radius cannot conform to the complex, irregular shape of the compressed "self" cluster.
-2. **The "Crowding Problem" (V2_Gravity in PCA Space):** PCA drastically condenses the normal traffic into a highly dense hyper-cluster. Applying the V2 gravitational pull here forces detectors directly into this dense center. They are immediately choked by surrounding normal traffic, generating thousands of False Positives and dragging accuracy down to 24-40%. 
-3. **The Optimal Strategy (PCA + V3_Uniform):** Scattering detectors uniformly (V3) into the compressed PCA space drops them safely into the "Dark Forest" (anomaly space). Empowered by the adaptive radius mechanism, they grow outward to perfectly seal the dense cluster of normal traffic without penetrating it. 
-
-**Ultimate Configuration:** The system achieves its peak, stable performance utilizing **PCA compression coupled with the V3_Uniform Generation Algorithm**. This configuration bypasses the Curse of Dimensionality and perfectly molds to the data, serving as the solid mathematical foundation for the final Evolutionary (Genetic Algorithm) optimization phase.
-
-## 📸 Application Showcase
-<img width="800" alt="Zrzut ekranu 2026-05-12 153813" src="https://github.com/user-attachments/assets/2f58ad4c-341b-4cf6-b2b3-db29abc33eb8" />
-
-<img width="800" alt="Zrzut ekranu 2026-05-12 155729" src="https://github.com/user-attachments/assets/e4284bba-33fd-4ccf-8a00-48c9862f531b" />
-
-
-## 📈 Roadmap / Future Optimizations
-
-- [x] Adaptive space profiling for detector generation.
-- [x] V-Detector implementation (Dynamic Radius).
-- [x] **Dimensionality Reduction (PCA):** Reduce the 41-dimensional space to mitigate the Curse of Dimensionality.
-- [ ] **Genetic Algorithm:** Replace random detector generation with crossover and mutation for optimal space coverage.
----
+      
+    
 *Created by [mackowiakd] - Open for collaboration and internship opportunities!*
