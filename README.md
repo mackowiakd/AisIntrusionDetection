@@ -114,6 +114,14 @@ A 3D projection of our dataset (above) reveals the harsh reality of real-world n
 * **The Conceptual Flaw:** Gravity would only work in an ideal scenario where normal traffic forms perfectly isolated "islands" (Right Panel). Because our real-world dataset overlaps (Left Panel), the Gravity heuristic actively dragged perfect detectors straight into the chaotic center. This forced massive collisions with healthy packets, leading to an unacceptable False Positive rate. 
 * **The Takeaway:** For highly overlapped datasets, attempting to penetrate the cluster is a mathematical flaw. The V3 Uniform approach succeeded because it builds a protective shield on the *outside* of the cluster instead.
 
+## 🎯 Target Deployment: Industrial OT vs. Business IT Networks
+
+While the benchmarks demonstrated high accuracy, a critical engineering conclusion of this project is understanding **where this specific architecture belongs**. This Immune IDS is explicitly designed for **Operational Technology (OT)** environments rather than standard **Information Technology (IT)** networks.
+
+* **The Chaos of IT (Business Traffic):** Standard office networks (web browsing, large downloads, varying hours) are highly erratic. The "Self" cluster is blurry, noisy, and constantly shifting. Implementing strict geometric anomaly boundaries (like AIS) here would generate excessive False Positives. For IT environments, probabilistic models (like Deep Neural Networks or LSTMs) are generally superior.
+* **The Determinism of OT (Industrial Automation):** Industrial protocols (e.g., **OPC UA, Profinet**) rely on highly deterministic, Machine-to-Machine (M2M) communication. A PLC sends exact byte payloads at rigid millisecond intervals. This creates a highly dense, mathematically predictable "Self" cluster—the exact environment where the **V3_Uniform** algorithm thrives, allowing us to build a watertight, zero-tolerance shield around the traffic.
+* **The Edge Computing Advantage:** Real-time industrial controllers cannot run heavy antivirus software or GPU-accelerated Deep Learning models without introducing fatal latency. Because our PCA-reduced model relies on simple Euclidean distance checks against 5000 spatial parameters, it can be exported and run *passively* on an edge switch. This provides critical infrastructure with a lightweight, Zero-Day firewall with near-zero computational overhead.
+
 ## 📈 Roadmap & Future Optimizations
 
 The V3_Uniform algorithm, combined with PCA, successfully solved the detection problem, achieving high accuracy and neutralizing Zero-Day attacks. However, the next phase of development focuses on **Production-Level Performance and Real-Time Inference Speed**.
