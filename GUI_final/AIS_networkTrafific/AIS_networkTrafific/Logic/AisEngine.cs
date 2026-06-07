@@ -44,7 +44,7 @@ namespace AIS_networkTrafific.UI.Logic
 
         // Metoda ładująca dane - wywoływana raz przy starcie lub po wyborze pliku
 
-        public void LoadData(string filePath, ref int requestedTrainSize, int requestedTestSize)
+        public void LoadData(string filePath, ref int requestedTrainSize, ref int requestedTestSize)
         {
             int originalTrainCount = 25192;
             if (!File.Exists(filePath)) throw new FileNotFoundException($"Nie znaleziono pliku: {filePath}");
@@ -84,17 +84,33 @@ namespace AIS_networkTrafific.UI.Logic
 
             // HACK: Jeśli trainSize wynosi -1, bierzemy absolutnie wszystko!
             int actualTrainSize = requestedTrainSize == -1 ? normalTrainData.Count : requestedTrainSize;
-            requestedTrainSize = actualTrainSize; //updating in GUI
+          
             if (normalTrainData.Count < actualTrainSize)
+            {
+                actualTrainSize = normalTrainData.Count;
                 throw new Exception($"Za mało zdrowego ruchu. Chcesz {actualTrainSize}, a jest {normalTrainData.Count}.");
-
+            }
+            requestedTrainSize = actualTrainSize; //updating in GUI
             FullTrainSet = normalTrainData.Take(actualTrainSize).ToList();
 
 
             // ==========================================
             // ETAP 3: PRZYGOTOWANIE TESTU 
             // ==========================================
-            // Tasujemy cały zbiór testowy, by ataki i zdrowy ruch leciały naprzemiennie
+            // 1. Tasujemy cały dedykowany zbiór testowy KDDTest+
+            var shuffledTestData = rawTestData.OrderBy(x => rng.Next()).ToList();
+
+            // 2. Obsługa limitu dla Test (Ochrona przed żądaniem ponad limit)
+            int actualTestSize = requestedTestSize == -1 ? shuffledTestData.Count : requestedTestSize;
+            if (actualTestSize > shuffledTestData.Count)
+            {
+                actualTestSize = shuffledTestData.Count;
+            }
+
+            // Zwracamy rzeczywisty rozmiar do GUI przez "ref"
+            requestedTestSize = actualTestSize;
+
+            // 3. Pobieramy DOKŁADNIE tyle ile zadeklarowaliśmy po walidacji
             FullTestSet = rawTestData.OrderBy(x => rng.Next()).ToList();
         }
 
