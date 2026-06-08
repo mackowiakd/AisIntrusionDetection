@@ -1,3 +1,8 @@
+About the Project: Solving the "Blind Spot" of Industry 4.0
+Traditional Intrusion Detection Systems (IDS) rely on Deep Packet Inspection (DPI) and signature matching. However, with the rise of Industry 4.0 and secure protocols like OPC UA (Sign & Encrypt), traditional firewalls become blind to the encrypted payload. How do we protect critical infrastructure when we can't read the data?
+
+This project introduces a Behavioral Anomaly Detection approach tailored for Operational Technology (OT) and ICS environments. Inspired by biological defense mechanisms, this Artificial Immune System (AIS) analyzes network traffic metadata (packet rates, intervals, flow statistics) rather than the payload itself. By establishing a baseline of "Self" (normal machine-to-machine communication), the system can detect "Non-Self" anomalies (DDoS, port scanning, ransomware behavior) even when the traffic is 100% encrypted.
+
 # 🦠 ImmuneIDS: Bio-Inspired Network Intrusion Detection System
 
 > **Status:** Active Development | **Looking for Internship/Junior roles!** 👋 
